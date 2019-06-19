@@ -1,0 +1,38 @@
+<html>
+	<head>
+
+	</head>
+	<body>
+		측정시간 : {{ .Now }}
+
+		<table>
+			<thead>
+				<tr>
+					<th>IP</th>
+					<th>위치</th>
+					<th>Ping</th>
+					<th>HTTP</th>
+					<th>Domain</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr>
+					<td>{{ .CdnDefault.IP }}</td>
+					<td>{{ .CdnDefault.Location }}</td>
+					<td>{{ .CdnDefault.Ping }} ms</td>
+					<td>{{ .CdnDefault.HTTPSpeed }}</td>
+					<td>{{ .CdnDefault.Domain }}</td>
+				</tr>
+				{{range .CdnList}}
+				<tr>
+					<td>{{ .IP }}</td>
+					<td>{{ .Location }}</td>
+					<td>{{ .Ping }} ms</td>
+					<td>{{ .HTTPSpeed }}</td>
+					<td>{{ .Domain }}</td>
+				</tr>
+				{{end}}
+			</tbody>
+		</table>
+	</body>
+</html>
