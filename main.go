@@ -30,7 +30,7 @@ func main() {
     if runtime.GOOS == "windows" {
 		listener, err = net.Listen("tcp", ":8080")
 	} else {
-		listener, err = net.Listen("unic", "/run/twimg-cdn-status.socket")
+		listener, err = net.Listen("unix", "/run/twimg-cdn-status.socket")
 	}
 
 	if err != nil {
