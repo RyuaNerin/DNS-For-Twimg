@@ -46,3 +46,5 @@
 - [ ] Ping 이 정상적으로 작동하지 않음.
 
 - [ ] cdn 에서 이미지 받아올 때 checksum 검사
+
+- [ ] `video.twimg.com` 대응
