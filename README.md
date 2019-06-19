@@ -15,3 +15,31 @@
 - 이 프로젝트의 DNS 서버 구현부분은 [kenshinx/godns](https://github.com/kenshinx/godns) 를 참조하여 만들었습니다.
 
 - 이 프로젝트는 [GNU GENERAL PUBLIC LICENSE v3.0](LISENCE)
+
+# Installation & Running
+
+1. install libraries
+  ```
+go get github.com/dustin/go-humanize
+go get github.com/garyburd/go-oauth/oauth
+go get github.com/miekg/dns
+go get github.com/oschwald/geoip2-golang
+go get github.com/sparrc/go-ping
+```
+
+2. build
+  ```
+  go build
+  ```
+
+3. running
+	```
+	sudo go run
+	```
+
+# TODO
+
+[] CDN 체크 후 트위터에 트윗하기
+[] 웹 페이지 개선
+[] Ping 이 정상적으로 작동하지 않음.
+[] cdn 에서 이미지 받아올 때 response hash 하기
