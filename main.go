@@ -1,38 +1,35 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
-	"net/url"
-	"runtime"
+	//"net/url"
+	"strings"
 	"time"
 	
-	"github.com/garyburd/go-oauth/oauth"
+	//"github.com/garyburd/go-oauth/oauth"
 )
 
 func main() {
+	loadConfig()
+
 	mux := &http.ServeMux{}
-	mux.Handle("/resources/", http.FileServer(http.Dir("resources")))
-	mux.Handle("/", http.HandlerFunc(httpHandler))
+	mux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
+	mux.Handle("/json"			, http.HandlerFunc(httpJSONHandler))
+	mux.Handle("/"				, http.HandlerFunc(httpIndexHandler))
 
     server := http.Server {
-		ErrorLog : log.New(ioutil.Discard, "", 0),
-		Handler: mux,
-        ReadTimeout : 30 * time.Second,
-        WriteTimeout : 30 * time.Second,
-        IdleTimeout : 30 * time.Second,
+		ErrorLog		: log.New(ioutil.Discard, "", 0),
+		Handler			: mux,
+        ReadTimeout		: config.HTTP.TimeoutRead .Duration,
+        WriteTimeout	: config.HTTP.TimeoutWrite.Duration,
+        IdleTimeout		: config.HTTP.TimeoutIdle .Duration,
 	}
 
-	var listener net.Listener
-	var err error
-    if runtime.GOOS == "windows" {
-		listener, err = net.Listen("tcp", ":8080")
-	} else {
-		listener, err = net.Listen("unix", "/run/twimg-cdn-status.socket")
-	}
-
+	listener, err := net.Listen(config.HTTP.Type, config.HTTP.Listen)
 	if err != nil {
 		panic(err)
 	}
@@ -58,19 +55,27 @@ func refreshCdn() {
 }
 
 func refreshCdnWorker() {
-	var cdnTester cdnTester
+	var cdnTestResult CdnStatusCollection
 
-	if !cdnTester.TestCdn() {
+	if !cdnTestResult.TestCdn() {
 		return
 	}
 	
-	setCdnResults(cdnTester.CdnDefualt, cdnTester.CdnList)
-	log.Printf("CdnResults Updated (count : %d)\n", len(cdnTester.CdnList))
+	setHTTPPage(cdnTestResult)
+	setDNSHostIP(cdnTestResult)
 
-	if len(cdnTester.CdnList) > 0 {
-		setCdnBest(cdnTester.CdnList[0].IP)
+	{
+		var sb strings.Builder
+		sb.WriteString("CdnResults Updated")
+		
+		for host, cdn := range cdnTestResult {
+			sb.WriteString(fmt.Sprintf("%s : %s (Total %d Cdn)\n", host, cdn[0].IP.String(), len(cdn)))
+		}
+
+		log.Println(sb.String())
 	}
 
+	/*
 	oauthClient := oauth.Client {
 		Credentials : oauth.Credentials {
 			Token : "",
@@ -91,4 +96,5 @@ func refreshCdnWorker() {
 	if err == nil {
 		resp.Body.Close()
 	}
+	*/
 }

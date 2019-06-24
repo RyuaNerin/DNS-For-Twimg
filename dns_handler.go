@@ -12,22 +12,9 @@ import (
 )
 
 const (
-	nameServerTimeOut	=   5 * time.Second
-	nameServerInterval	= 200 * time.Millisecond
-	dnsCacheExpire		=  10 * time.Minute
-)
-
-const (
 	notIPQuery = 0
 	_IP4Query  = 4
 	_IP6Query  = 6
-)
-
-var (
-	nameServerHosts = []string {
-		"8.8.8.8:53",
-		"8.8.4.4:53",
-	}
 )
 
 type dnsHandler struct {
@@ -41,13 +28,15 @@ func newDNSHandler() (handler *dnsHandler) {
 	}
 
 	handler.cache = MemoryCache {
-		Backend	: make(map[string]Mesg),
-		Expire	: dnsCacheExpire,
+		Backend		: make(map[string]Mesg),
+		Expire		: config.DNS.ServerCacheExpire.Duration,
+		Maxcount	: config.DNS.ServerCacheMaxCount,
 	}
 
 	handler.negCache = MemoryCache{
-		Backend	: make(map[string]Mesg),
-		Expire	: dnsCacheExpire,
+		Backend		: make(map[string]Mesg),
+		Expire		: config.DNS.ServerCacheExpire.Duration,
+		Maxcount	: config.DNS.ServerCacheMaxCount,
 	}
 
 	return
@@ -124,35 +113,43 @@ func (h *dnsHandler) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	}
 }
 
-func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) bool {
-	if req.Opcode == dns.OpcodeQuery {
-		for _, q := range req.Question {
-			if q.Qtype == dns.TypeA && q.Name == twimgHostNameD {
-				m := new(dns.Msg)
-				m.SetReply(req)
-				m.Authoritative = true
+func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) (pass bool) {
+	if req.Opcode != dns.OpcodeQuery {
+		return
+	}
 
-				dnsTwimgIPLock.RLock()
-				aRecord := &dns.A {
-					A	: dnsTwimgIP,
-					Hdr	: dns.RR_Header {
-						Name	: q.Name,
-						Rrtype	: dns.TypeA,
-						Class	: dns.ClassINET,
-						Ttl		: dnsTwimgRecordTTL,
-					},
-				}
-				m.Answer = append(m.Answer, aRecord)
-				dnsTwimgIPLock.RUnlock()
+	for _, q := range req.Question {
+		if q.Qtype != dns.TypeA {
+			continue
+		}
 
-				w.WriteMsg(m)
+		dnsTwimgIPLock.RLock()
+		ip, ok := dnsTwimgIP[q.Name]
+		dnsTwimgIPLock.RUnlock()
 
-				return true
+		if ok {
+			m := new(dns.Msg)
+			m.SetReply(req)
+			m.Authoritative = true
+
+			aRecord := &dns.A {
+				A	: ip,
+				Hdr	: dns.RR_Header {
+					Name	: q.Name,
+					Rrtype	: dns.TypeA,
+					Class	: dns.ClassINET,
+					Ttl		: dnsTwimgRecordTTL,
+				},
 			}
+			m.Answer = append(m.Answer, aRecord)
+
+			w.WriteMsg(m)
+
+			return true
 		}
 	}
 
-	return false
+	return
 }
 
 func (h *dnsHandler) isIPQuery(q dns.Question) int {
@@ -181,9 +178,9 @@ func (e ResolvError) Error() string {
 // https://github.com/kenshinx/godns/blob/89cf763271800261c0ab38983a27c5b34f34f0a5/resolver.go#L131
 func (h *dnsHandler) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error) {
 	c := &dns.Client{
-		Net:          net,
-		ReadTimeout:  nameServerTimeOut,
-		WriteTimeout: nameServerTimeOut,
+		Net				: net,
+		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
+		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,
 	}
 
 	if net == "udp" {
@@ -224,7 +221,7 @@ func (h *dnsHandler) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error) 
 		}
 	}
 
-	ticker := time.NewTicker(nameServerInterval)
+	ticker := time.NewTicker(config.DNS.DNSLookupInterval.Duration)
 	defer ticker.Stop()
 
 	nameservers := h.getNameServer(qname)
@@ -262,7 +259,7 @@ func (h *dnsHandler) getNameServer(qname string) []string {
 		return ns
 	}
 
-	for _, nameserver := range nameServerHosts {
+	for _, nameserver := range config.DNS.NameServer {
 		ns = append(ns, nameserver)
 	}
 	return ns

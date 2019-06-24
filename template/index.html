@@ -3,7 +3,28 @@
 
 	</head>
 	<body>
-		측정시간 : {{ .Now }}
+		측정시간 : {{ .UpdatedAt }}
+
+		<h1>CDN 최적화</h1>
+		<table>
+			<thead>
+				<tr>
+					<td>Host</td>
+					<td>CDN</td>
+				</tr>
+			</thead>
+			<tbody>
+				{{ range $host, $ip := .BestCdn }}
+				<tr>
+					<td>{{ $host }}</td>
+					<td>{{ $ip }}</td>
+				</tr>
+				{{ end }}
+			</tbody>
+		</table>
+
+		{{ range $host, $lst := .Detail }}
+		<h2> {{ $host }}</h2>
 
 		<table>
 			<thead>
@@ -16,23 +37,17 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr>
-					<td>{{ .CdnDefault.IP }}</td>
-					<td>{{ .CdnDefault.Location }}</td>
-					<td>{{ .CdnDefault.Ping }} ms</td>
-					<td>{{ .CdnDefault.HTTPSpeed }}</td>
-					<td>{{ .CdnDefault.Domain }}</td>
-				</tr>
-				{{range .CdnList}}
+				{{range $lst}}
 				<tr>
 					<td>{{ .IP }}</td>
-					<td>{{ .Location }}</td>
-					<td>{{ .Ping }} ms</td>
-					<td>{{ .HTTPSpeed }}</td>
+					<td>{{ .GeoIP }}</td>
+					<td>{{ .Ping.RttAvg }} ms</td>
+					<td>{{ .HTTP.BpsAvg }}</td>
 					<td>{{ .Domain }}</td>
 				</tr>
 				{{end}}
 			</tbody>
 		</table>
+		{{ end }}
 	</body>
 </html>

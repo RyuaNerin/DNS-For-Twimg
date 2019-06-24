@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -11,56 +12,82 @@ import (
 	"time"
 )
 
-const (
-	templatePath = "template/index.html"
-	templateBufferSize = 32 * 1024
-)
-
 var (
-	indexLock sync.RWMutex
-	indexData []byte
-	indexETag string
+	pageLock		sync.RWMutex
+	pageIndex		[]byte
+	pageIndexEtag	string
+	pageJSON		[]byte
+	pageJSONEtag	string
 )
 
-func httpHandler(w http.ResponseWriter, r *http.Request) {
-	indexLock.RLock()
-	defer indexLock.RUnlock()
+func httpIndexHandler(w http.ResponseWriter, r *http.Request) {
+	pageLock.RLock()
+	defer pageLock.RUnlock()
 
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "text/html")
-	w.Header().Set("ETag", indexETag)
-	w.Write(indexData)
+	if pageIndex == nil {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("ETag", pageIndexEtag)
+		w.Write(pageIndex)
+	}
+}
+func httpJSONHandler(w http.ResponseWriter, r *http.Request) {
+	pageLock.RLock()
+	defer pageLock.RUnlock()
+
+	if pageJSON == nil {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/json")
+		w.Header().Set("ETag", pageJSONEtag)
+		w.Write(pageJSON)
+	}
 }
 
 type TemplateData struct {
-	CdnDefault CdnStatus
-	CdnList []CdnStatus
-	Now string
+	UpdatedAt	string					`json:"updated_at"`
+	BestCdn		map[string]string		`json:"best_cdn"`
+	Detail		CdnStatusCollection		`json:"detail"`
 }
 
-func setCdnResults(cdnDefault CdnStatus, cdnList []CdnStatus) {
-	indexLock.Lock()
-	defer indexLock.Unlock()
+func setHTTPPage(cdnTestResult CdnStatusCollection) {
+	pageLock.Lock()
+	defer pageLock.Unlock()
 
-	t, err := template.ParseFiles(templatePath)
-	if err != nil {
-		return
+	data := TemplateData {
+		UpdatedAt	: time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
+		Detail		: cdnTestResult,
+		BestCdn		: make(map[string]string),
+	}
+	for host, lst := range cdnTestResult {
+		data.BestCdn[host] = lst[0].IP.String()
 	}
 
-	data := &TemplateData {
-		CdnDefault: cdnDefault,
-		CdnList : cdnList,
-		Now : time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
+	// main page
+	{
+		buff := new(bytes.Buffer)
+		t, err := template.ParseFiles(config.HTTP.TemplatePath)
+		if err == nil {
+			err = t.Execute(buff, &data)
+			if err == nil {
+				pageIndex		= buff.Bytes()
+				pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(pageIndex)))
+			}
+		}
 	}
 
-	buff := bytes.NewBuffer(make([]byte, 0, templateBufferSize))
-	err = t.Execute(buff, data)
-	if err != nil {
-		return
+	// json
+	{
+		buff := new(bytes.Buffer)
+		err := json.NewEncoder(buff).Encode(&data)
+		if err == nil {
+			pageJSON		= buff.Bytes()
+			pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(pageJSON)))
+		}
 	}
 
-	indexData = buff.Bytes()
 
-	hash := fnv.New64()
-	indexETag = fmt.Sprintf(`"%s"`, hex.EncodeToString(hash.Sum(indexData)))
 }

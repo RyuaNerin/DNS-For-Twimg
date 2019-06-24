@@ -14,16 +14,21 @@ const (
 )
 
 var (
-	dnsTwimgIP net.IP
-	dnsTwimgIPLock sync.RWMutex
+	dnsTwimgIPLock	sync.RWMutex
+	dnsTwimgIP		= make(map[string]net.IP)
 
 	dnsTCP dns.Server
 	dnsUDP dns.Server
 )
 
-func setCdnBest(ip net.IP) {
+func setDNSHostIP(c CdnStatusCollection) {
 	dnsTwimgIPLock.Lock()
-	dnsTwimgIP = ip
+	for host := range dnsTwimgIP {
+		delete(dnsTwimgIP, host)
+	}
+	for host, result := range c {
+		dnsTwimgIP[host + "."] = result[0].IP
+	}
 	dnsTwimgIPLock.Unlock()
 }
 
