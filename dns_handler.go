@@ -119,9 +119,6 @@ func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) (pass bool)
 	}
 
 	for _, q := range req.Question {
-		if q.Qtype != dns.TypeA {
-			continue
-		}
 
 		dnsTwimgIPLock.RLock()
 		ip, ok := dnsTwimgIP[q.Name]
@@ -132,20 +129,29 @@ func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) (pass bool)
 			m.SetReply(req)
 			m.Authoritative = true
 
-			aRecord := &dns.A {
-				A	: ip,
-				Hdr	: dns.RR_Header {
-					Name	: q.Name,
-					Rrtype	: dns.TypeA,
-					Class	: dns.ClassINET,
-					Ttl		: dnsTwimgRecordTTL,
-				},
+			
+			switch q.Qtype {
+			case dns.TypeA:
+				aRecord := &dns.A {
+					A	: ip,
+					Hdr	: dns.RR_Header {
+						Name	: q.Name,
+						Rrtype	: dns.TypeA,
+						Class	: dns.ClassINET,
+						Ttl		: dnsTwimgRecordTTL,
+					},
+
+				}
+				m.Answer = append(m.Answer, aRecord)
+				w.WriteMsg(m)
+				return true
+
+			case dns.TypeAAAA:
+				return true
+
+			case dns.TypeCNAME:
+				return true
 			}
-			m.Answer = append(m.Answer, aRecord)
-
-			w.WriteMsg(m)
-
-			return true
 		}
 	}
 
