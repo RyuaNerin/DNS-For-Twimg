@@ -39,7 +39,13 @@
 			<tbody>
 				{{range $lst}}
 				<tr>
-					<td>{{ .IP }}</td>
+					<td>
+						{{ if .DefaultCdn }}
+						<b>{{ .IP }}</b>
+						{{ else }}
+						{{ .IP }}
+						{{ end }}
+					</td>
 					<td>{{ .GeoIP }}</td>
 					<td>{{ .Ping.RttAvg }} ms</td>
 					<td>{{ .HTTP.BpsAvg }}</td>
