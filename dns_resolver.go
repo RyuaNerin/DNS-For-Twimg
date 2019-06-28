@@ -12,12 +12,10 @@ import (
 )
 
 type dnsResolver struct {
-	dnsSfx *suffixTreeNode
 }
 
 func newDNSResolver() *dnsResolver {
 	return &dnsResolver {
-		dnsSfx : newSuffixTreeRoot(),
 	}
 }
 
@@ -106,7 +104,7 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 	ticker := time.NewTicker(config.DNS.DNSLookupInterval.Duration)
 	defer ticker.Stop()
 
-	nameservers := h.getNameServer(qname)
+	nameservers := config.DNS.NameServer
 	// Start lookup on each nameserver top-down, in every second
 	for _, nameserver := range nameservers {
 		wg.Add(1)
@@ -129,20 +127,4 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 	default:
 		return nil, ResolvError{qname, net, nameservers}
 	}
-}
-
-func (h *dnsResolver) getNameServer(qname string) []string {
-	queryKeys := strings.Split(qname, ".")
-	queryKeys = queryKeys[:len(queryKeys)-1]
-
-	ns := []string{}
-	if v, ok := h.dnsSfx.search(queryKeys); ok {
-		ns = append(ns, net.JoinHostPort(v, "53"))
-		return ns
-	}
-
-	for _, nameserver := range config.DNS.NameServer {
-		ns = append(ns, nameserver)
-	}
-	return ns
 }
