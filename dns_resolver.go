@@ -31,6 +31,31 @@ func (e ResolvError) Error() string {
 	return fmt.Sprintf("%s resolv failed on %s (%s)", e.qname, strings.Join(e.nameservers, "; "), e.net)
 }
 
+func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
+	req := new(dns.Msg)
+	req.SetQuestion(host, dns.TypeA)
+	req.SetQuestion(host, dns.TypeAAAA)
+	
+	msg, err := h.Lookup("udp", req)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ans := range msg.Answer {
+		switch ans.Header().Rrtype {
+		case dns.TypeA:
+			a := ans.(*dns.A)
+			return a.A, nil
+
+		case dns.TypeAAAA:
+			aaaa := ans.(*dns.AAAA)
+			return aaaa.AAAA, nil
+		}
+	}
+
+	return nil, ResolvError{host, "udp", nil}
+}
+
 // https://github.com/kenshinx/godns/blob/89cf763271800261c0ab38983a27c5b34f34f0a5/resolver.go#L131
 func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error) {
 	c := &dns.Client{
@@ -38,6 +63,7 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
 		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,
 	}
+	
 
 	if net == "udp" {
 		req = req.SetEdns0(65535, true)

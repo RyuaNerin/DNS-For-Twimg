@@ -140,10 +140,10 @@ func (ct *cdnStatusTester) filterCdn(skip func(cs CdnStatus) bool) {
 }
 
 func (ct *cdnStatusTester) getDefaultCdn() {
-	addr, err := net.ResolveIPAddr("ip", ct.Host.Host)
-	if err == nil && addr.IP.String() != "" {
-		ct.cdnList[addr.IP.String()] = &CdnStatus {
-			IP			: addr.IP,
+	addr, err := defaultDNSResolver.Resolve(ct.Host.Host)
+	if err == nil && addr.String() != "" {
+		ct.cdnList[addr.String()] = &CdnStatus {
+			IP			: addr,
 			DefaultCdn	: true,
 		}
 	}
