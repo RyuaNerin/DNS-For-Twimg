@@ -147,9 +147,11 @@ func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) (pass bool)
 				return true
 
 			case dns.TypeAAAA:
+				w.WriteMsg(m)
 				return true
 
 			case dns.TypeCNAME:
+				w.WriteMsg(m)
 				return true
 			}
 		}
