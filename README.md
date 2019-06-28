@@ -21,16 +21,16 @@
 
 - **아래 주소는 확정된 사항이 아니며 언제든 바뀔 수 있습니다.**
 
-- DNS 설정에 아래 IP 를 제일 상단으로 입력하비낟
-  - `121.167.84.33`
+- DNS 설정에 아래 IP 를 제일 상단으로 입력합니다
+  - `14.33.182.87`
 
 - 웹에서 최적의 CDN 정보를 확인할 수 있습니다
 
-  - [121.167.84.33:8080](http://121.167.84.33:8080)
+  - [https://twimg.ryuar.in/](https://twimg.ryuar.in/)
 
 - 타 앱이나 서비스에서도 본 서버의 자세한 측정 결과를 얻어올 수 있습니다
 
-  - [http://121.167.84.33:8080/json](http://121.167.84.33:8080/json)
+  - [https://twimg.ryuar.in/json](https://twimg.ryuar.in//json)
 
 ## Installation & Running
 
@@ -59,10 +59,10 @@
 
 - [ ] 웹 페이지 개선
 
-- [v] Ping 이 정상적으로 작동하지 않음.
+- [x] Ping 이 정상적으로 작동하지 않음.
 
-- [v] cdn 에서 이미지 받아올 때 checksum 검사
+- [x] cdn 에서 이미지 받아올 때 checksum 검사
 
-- [v] `video.twimg.com` 대응
+- [x] `video.twimg.com` 대응
 
 - 추가 건의사항은 [여기](https://github.com/RyuaNerin/DNS-For-Twimg/issues) 에서 작성해주시면 감사하겠습니다.
