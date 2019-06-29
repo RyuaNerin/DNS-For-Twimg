@@ -40,7 +40,7 @@ func main() {
 	}
 	defer rpcListener.Close()
 
-	go refreshCdn()
+	cdnTester.Start()
 	dnsServer.Start()
 	httpServer.Start()
 

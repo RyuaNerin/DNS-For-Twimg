@@ -1,6 +1,9 @@
 package main
 
 import (
+	"hash/fnv"
+	"bytes"
+	"html/template"
 	"log"
 	"crypto/sha1"
 	"encoding/hex"
@@ -88,27 +91,107 @@ type threatCrowdAPIResult struct {
 	Resolutions		[]resolutions `json:"resolutions"`
 }
 
-func refreshCdn() {
+type CDNTester struct {
+	pageLock		sync.RWMutex
+	pageIndex		[]byte
+	pageIndexEtag	string
+	pageJSON		[]byte
+	pageJSONEtag	string
+}
+
+var cdnTester CDNTester
+
+func (ct *CDNTester) Start() {
 	for {
 		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
 		
 		time.Sleep(time.Until(nextTime))
 
-		go refreshCdnWorker()
+		go ct.worker()
 
 	}
 }
 
-func refreshCdnWorker() {
+func (sv *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
+	sv.pageLock.RLock()
+	defer sv.pageLock.RUnlock()
+
+	if sv.pageIndex == nil {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("ETag", sv.pageIndexEtag)
+		w.Write(sv.pageIndex)
+	}
+}
+func (sv *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
+	sv.pageLock.RLock()
+	defer sv.pageLock.RUnlock()
+
+	if sv.pageJSON == nil {
+		w.WriteHeader(http.StatusNoContent)
+	} else {
+		w.WriteHeader(http.StatusOK)
+		w.Header().Set("Content-Type", "text/json")
+		w.Header().Set("ETag", sv.pageJSONEtag)
+		w.Write(sv.pageJSON)
+	}
+}
+
+type TemplateData struct {
+	UpdatedAt	string					`json:"updated_at"`
+	BestCdn		map[string]string		`json:"best_cdn"`
+	Detail		CdnStatusCollection		`json:"detail"`
+}
+
+func (sv *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
+	sv.pageLock.Lock()
+	defer sv.pageLock.Unlock()
+
+	data := TemplateData {
+		UpdatedAt	: time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
+		Detail		: cdnTestResult,
+		BestCdn		: make(map[string]string),
+	}
+	for host, lst := range cdnTestResult {
+		data.BestCdn[host] = lst[0].IP.String()
+	}
+
+	// main page
+	{
+		buff := new(bytes.Buffer)
+		t, err := template.ParseFiles(config.HTTP.TemplatePath)
+		if err == nil {
+			err = t.Execute(buff, &data)
+			if err == nil {
+				sv.pageIndex		= buff.Bytes()
+				sv.pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageIndex)))
+			}
+		}
+	}
+
+	// json
+	{
+		buff := new(bytes.Buffer)
+		err := json.NewEncoder(buff).Encode(&data)
+		if err == nil {
+			sv.pageJSON		= buff.Bytes()
+			sv.pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageJSON)))
+		}
+	}
+}
+
+func (ct *CDNTester) worker() {
 	var cdnTestResult CdnStatusCollection
 
 	if !cdnTestResult.TestCdn() {
 		return
 	}
 	
-	httpServer.SetCdnInfomation(cdnTestResult)
 	dnsServer.SetCDN(cdnTestResult)
+	ct.setCdnResult(cdnTestResult)
 
 	{
 		var sb strings.Builder
