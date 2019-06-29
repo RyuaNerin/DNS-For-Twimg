@@ -48,13 +48,23 @@ type ConfigDNS struct {
 }
 type ConfigTest struct {
 	RefreshInterval			TimeDuration			`json:"refresh_interval"`
+
 	ThreatCrowdExpire		TimeDuration			`json:"threatcrowd_expire"`
+
 	PingCount				int						`json:"ping_count"`
 	PingTimeout				TimeDuration			`json:"ping_timeout"`
+
 	HTTPCount				int						`json:"http_count"`
 	HTTPTimeout				TimeDuration			`json:"http_timeout"`
 	HTTPBufferSize			int						`json:"http_buffersize"`
+
 	GeoIP2Path				string					`json:"geoip2_path"`
+
+	TwitterStatusTemplate	string					`json:"twitter-status-template"`
+	TwitterAppKey			string					`json:"twitter-app-key"`
+	TwitterAppSecret		string					`json:"twitter-app-secret"`
+	TwitterUserKey			string					`json:"twitter-user-key"`
+	TwitterUserSecret		string					`json:"twitter-user-secret"`
 }
 type ConfigRPC struct {
 	Network					string					`json:"network"`
