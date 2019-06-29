@@ -8,12 +8,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-const (
-	notIPQuery = 0
-	_IP4Query  = 4
-	_IP6Query  = 6
-)
-
 type DNSServer struct {
 	cache, negCache MemoryCache
 
@@ -156,10 +150,10 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	}
 	log.Printf("%s lookup　%s\n", remote, Q.String())
 
-	IPQuery := sv.isIPQuery(q)
+	isIPQuery := sv.isIPQuery(q)
 
 	// Only query cache when qtype == 'A'|'AAAA' , qclass == 'IN'
-	if IPQuery > 0 {
+	if isIPQuery {
 		mesg, err := sv.cache.Get(Q)
 		if err != nil {
 			if mesg, err = sv.negCache.Get(Q); err != nil {
@@ -194,7 +188,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 
 	w.WriteMsg(mesg)
 
-	if IPQuery > 0 && len(mesg.Answer) > 0 {
+	if isIPQuery && len(mesg.Answer) > 0 {
 		err = sv.cache.Set(Q, mesg)
 		if err != nil {
 			log.Printf("Set %s cache failed: %s", Q.String(), err.Error())
@@ -203,17 +197,6 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	}
 }
 
-func (sv *DNSServer) isIPQuery(q dns.Question) int {
-	if q.Qclass != dns.ClassINET {
-		return notIPQuery
-	}
-
-	switch q.Qtype {
-	case dns.TypeA:
-		return _IP4Query
-	case dns.TypeAAAA:
-		return _IP6Query
-	default:
-		return notIPQuery
-	}
+func (sv *DNSServer) isIPQuery(q dns.Question) bool {
+	return q.Qclass == dns.ClassINET && (q.Qtype == dns.TypeA || q.Qtype == dns.TypeAAAA)
 }
