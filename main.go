@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"net"
 	"net/rpc"
-	"flag"
 )
 
 var (
