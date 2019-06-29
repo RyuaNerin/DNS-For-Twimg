@@ -35,6 +35,8 @@ type ConfigHTTP struct {
 
 	TemplatePath			string					`json:"template_path"`
 	TemplateBufferSize		int						`json:"template_buffer"`
+
+	WWWRoot					string					`json:"www-root"`
 }
 type ConfigDNS struct {
 	NameServer				[]string				`json:"server_nameserver"`

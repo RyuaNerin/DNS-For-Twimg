@@ -40,7 +40,7 @@ func main() {
 
 	go startDNSServer()
 	go refreshCdn()
-	go startHTTPServer()
+	httpServer.Start()
 
 	remote := new(RPCRemote)
 	rpc.RegisterName("remote", remote)
@@ -52,7 +52,7 @@ type RPCRemote struct {
 }
 func (r *RPCRemote) Reload(arg interface{}, reply *interface{}) error {
 	loadConfig(flagConfigPath)
-	restartHTTPServer()
+	httpServer.Restart()
 
 	return nil
 }

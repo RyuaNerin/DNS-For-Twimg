@@ -15,7 +15,8 @@ import (
 	"time"
 )
 
-var (
+type HTTPServer struct {
+	serverMux		http.ServeMux
 	server			http.Server
 
 	pageLock		sync.RWMutex
@@ -23,17 +24,18 @@ var (
 	pageIndexEtag	string
 	pageJSON		[]byte
 	pageJSONEtag	string
-)
+}
 
-func startHTTPServer() {
-	mux := &http.ServeMux{}
-	mux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
-	mux.Handle("/json"			, http.HandlerFunc(httpJSONHandler))
-	mux.Handle("/"				, http.HandlerFunc(httpIndexHandler))
-	
-	server = http.Server {
+var httpServer HTTPServer
+
+func (sv *HTTPServer) Start() {
+	sv.serverMux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
+	sv.serverMux.Handle("/json"			, http.HandlerFunc(sv.httpJSONHandler))
+	sv.serverMux.Handle("/"				, http.HandlerFunc(sv.httpIndexHandler))
+
+	sv.server = http.Server {
 		ErrorLog		: log.New(ioutil.Discard, "", 0),
-		Handler			: mux,
+		Handler			: &sv.serverMux,
 		ReadTimeout		: config.HTTP.TimeoutRead .Duration,
 		WriteTimeout	: config.HTTP.TimeoutWrite.Duration,
 		IdleTimeout		: config.HTTP.TimeoutIdle .Duration,
@@ -44,46 +46,48 @@ func startHTTPServer() {
 		panic(err)
 	}
 	
-	err = server.Serve(listener)
+	go func() {
+		err = sv.server.Serve(listener)
+		if err != nil {
+			panic(err)
+		}
+	}()
+}
+
+func (sv *HTTPServer) Restart() {
+	err := sv.server.Shutdown(nil)
 	if err != nil {
 		panic(err)
 	}
-}
 
-func restartHTTPServer() {
-	err := server.Shutdown(nil)
-	if err != nil {
-		panic(err)
-	}
-
-	startHTTPServer()
+	sv.Start()
 }
 
 
-func httpIndexHandler(w http.ResponseWriter, r *http.Request) {
-	pageLock.RLock()
-	defer pageLock.RUnlock()
+func (sv *HTTPServer) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
+	sv.pageLock.RLock()
+	defer sv.pageLock.RUnlock()
 
-	if pageIndex == nil {
+	if sv.pageIndex == nil {
 		w.WriteHeader(http.StatusNoContent)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/html")
-		w.Header().Set("ETag", pageIndexEtag)
-		w.Write(pageIndex)
+		w.Header().Set("ETag", sv.pageIndexEtag)
+		w.Write(sv.pageIndex)
 	}
 }
-func httpJSONHandler(w http.ResponseWriter, r *http.Request) {
-	pageLock.RLock()
-	defer pageLock.RUnlock()
+func (sv *HTTPServer) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
+	sv.pageLock.RLock()
+	defer sv.pageLock.RUnlock()
 
-	if pageJSON == nil {
+	if sv.pageJSON == nil {
 		w.WriteHeader(http.StatusNoContent)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/json")
-		w.Header().Set("ETag", pageJSONEtag)
-		w.Write(pageJSON)
+		w.Header().Set("ETag", sv.pageJSONEtag)
+		w.Write(sv.pageJSON)
 	}
 }
 
@@ -93,9 +97,9 @@ type TemplateData struct {
 	Detail		CdnStatusCollection		`json:"detail"`
 }
 
-func setHTTPPage(cdnTestResult CdnStatusCollection) {
-	pageLock.Lock()
-	defer pageLock.Unlock()
+func (sv *HTTPServer) SetCdnInfomation(cdnTestResult CdnStatusCollection) {
+	sv.pageLock.Lock()
+	defer sv.pageLock.Unlock()
 
 	data := TemplateData {
 		UpdatedAt	: time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
@@ -113,8 +117,8 @@ func setHTTPPage(cdnTestResult CdnStatusCollection) {
 		if err == nil {
 			err = t.Execute(buff, &data)
 			if err == nil {
-				pageIndex		= buff.Bytes()
-				pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(pageIndex)))
+				sv.pageIndex		= buff.Bytes()
+				sv.pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageIndex)))
 			}
 		}
 	}
@@ -124,10 +128,8 @@ func setHTTPPage(cdnTestResult CdnStatusCollection) {
 		buff := new(bytes.Buffer)
 		err := json.NewEncoder(buff).Encode(&data)
 		if err == nil {
-			pageJSON		= buff.Bytes()
-			pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(pageJSON)))
+			sv.pageJSON		= buff.Bytes()
+			sv.pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageJSON)))
 		}
 	}
-
-
 }

@@ -107,7 +107,7 @@ func refreshCdnWorker() {
 		return
 	}
 	
-	setHTTPPage(cdnTestResult)
+	httpServer.SetCdnInfomation(cdnTestResult)
 	setDNSHostIP(cdnTestResult)
 
 	{

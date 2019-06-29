@@ -171,7 +171,9 @@
 		"timeout_idle"	: "30s",
 
 		"template_path"		: "template/index.html",
-		"template_buffer" 	: 32768
+		"template_buffer" 	: 32768,
+
+		"www-root" : "./www-root"
 	},
 	"dns" : {
 		"server_nameserver" : [
