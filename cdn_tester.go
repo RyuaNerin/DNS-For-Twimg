@@ -108,7 +108,7 @@ func refreshCdnWorker() {
 	}
 	
 	httpServer.SetCdnInfomation(cdnTestResult)
-	setDNSHostIP(cdnTestResult)
+	dnsServer.SetCDN(cdnTestResult)
 
 	{
 		var sb strings.Builder

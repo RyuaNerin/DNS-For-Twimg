@@ -38,8 +38,8 @@ func main() {
 	}
 	defer rpcListener.Close()
 
-	go startDNSServer()
 	go refreshCdn()
+	dnsServer.Start()
 	httpServer.Start()
 
 	remote := new(RPCRemote)
