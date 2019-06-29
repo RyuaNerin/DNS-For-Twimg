@@ -1,100 +1,58 @@
 package main
 
 import (
-	"fmt"
-	"io/ioutil"
-	"log"
 	"net"
-	"net/http"
-	//"net/url"
-	"strings"
-	"time"
-	
-	//"github.com/garyburd/go-oauth/oauth"
+	"net/rpc"
+	"flag"
+)
+
+var (
+	flagConfigPath string
 )
 
 func main() {
-	loadConfig()
+	flagReload := flag.NewFlagSet("reload", flag.ContinueOnError)
 
-	mux := &http.ServeMux{}
-	mux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
-	mux.Handle("/json"			, http.HandlerFunc(httpJSONHandler))
-	mux.Handle("/"				, http.HandlerFunc(httpIndexHandler))
+	flag.StringVar(&flagConfigPath, "config", defaultConfigPath, "configure path")
+	flag.Parse()
+	
+	loadConfig(flagConfigPath)
 
-    server := http.Server {
-		ErrorLog		: log.New(ioutil.Discard, "", 0),
-		Handler			: mux,
-        ReadTimeout		: config.HTTP.TimeoutRead .Duration,
-        WriteTimeout	: config.HTTP.TimeoutWrite.Duration,
-        IdleTimeout		: config.HTTP.TimeoutIdle .Duration,
+	if flagReload.Parsed() {
+		rc, err := rpc.Dial(config.RPC.Network, config.RPC.Address)
+		if err != nil {
+			panic(err)
+		}
+		defer rc.Close()
+
+		err = rc.Call("Remote.Reload", nil, nil)
+		if err != nil {
+			panic(err)
+		}
+		return
 	}
 
-	listener, err := net.Listen(config.HTTP.Type, config.HTTP.Listen)
+	rpcListener, err := net.Listen(config.RPC.Network, config.RPC.Address)
 	if err != nil {
 		panic(err)
 	}
+	defer rpcListener.Close()
 
 	go startDNSServer()
 	go refreshCdn()
+	go startHTTPServer()
 
-	err = server.Serve(listener)
-	if err != nil {
-		panic(err)
-	}
+	remote := new(RPCRemote)
+	rpc.RegisterName("remote", remote)
+
+	rpc.Accept(rpcListener)
 }
 
-func refreshCdn() {
-	for {
-		nextTime := time.Now().Truncate(time.Hour)
-		nextTime = nextTime.Add(time.Hour)
-
-		go refreshCdnWorker()
-
-		time.Sleep(time.Until(nextTime))
-	}
+type RPCRemote struct {
 }
+func (r *RPCRemote) Reload(arg interface{}, reply *interface{}) error {
+	loadConfig(flagConfigPath)
+	restartHTTPServer()
 
-func refreshCdnWorker() {
-	var cdnTestResult CdnStatusCollection
-
-	if !cdnTestResult.TestCdn() {
-		return
-	}
-	
-	setHTTPPage(cdnTestResult)
-	setDNSHostIP(cdnTestResult)
-
-	{
-		var sb strings.Builder
-		sb.WriteString("CdnResults Updated")
-		
-		for host, cdn := range cdnTestResult {
-			sb.WriteString(fmt.Sprintf("%s : %s (Total %d Cdn)\n", host, cdn[0].IP.String(), len(cdn)))
-		}
-
-		log.Println(sb.String())
-	}
-
-	/*
-	oauthClient := oauth.Client {
-		Credentials : oauth.Credentials {
-			Token : "",
-			Secret : "",
-		},
-		Header : make(http.Header),
-	}
-	userToken := oauth.Credentials{
-		Token: "",
-		Secret : "",
-	}	
-	oauthClient.Header.Set("Accept-Encoding", "gzip, defalte")
-
-	postData := url.Values {}
-	postData.Set("status", "")
-
-	resp, err := oauthClient.Post(http.DefaultClient, &userToken, "https://api.twitter.com/1.1/statuses/update.json", postData)
-	if err == nil {
-		resp.Body.Close()
-	}
-	*/
+	return nil
 }

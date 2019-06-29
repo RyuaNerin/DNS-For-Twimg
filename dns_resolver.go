@@ -30,6 +30,8 @@ func (e ResolvError) Error() string {
 }
 
 func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
+	host = host + "."
+
 	req := new(dns.Msg)
 	req.SetQuestion(host, dns.TypeA)
 	req.SetQuestion(host, dns.TypeAAAA)
@@ -61,7 +63,6 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
 		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,
 	}
-	
 
 	if net == "udp" {
 		req = req.SetEdns0(65535, true)

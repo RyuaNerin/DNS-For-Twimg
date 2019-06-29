@@ -60,6 +60,20 @@ func startDNSServer() {
 	go listenAndServe(&dnsUDP)
 }
 
+func restartDNSServer() {
+	err := dnsTCP.Shutdown()
+	if err != nil {
+		panic(err)
+	}
+	
+	err = dnsUDP.Shutdown()
+	if err != nil {
+		panic(err)
+	}
+
+	startDNSServer()
+}
+
 func listenAndServe(ds *dns.Server) {
 	err := ds.ListenAndServe()
 	if err != nil {

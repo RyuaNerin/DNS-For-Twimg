@@ -7,18 +7,58 @@ import (
 	"fmt"
 	"hash/fnv"
 	"html/template"
+	"io/ioutil"
+	"log"
+	"net"
 	"net/http"
 	"sync"
 	"time"
 )
 
 var (
+	server			http.Server
+
 	pageLock		sync.RWMutex
 	pageIndex		[]byte
 	pageIndexEtag	string
 	pageJSON		[]byte
 	pageJSONEtag	string
 )
+
+func startHTTPServer() {
+	mux := &http.ServeMux{}
+	mux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
+	mux.Handle("/json"			, http.HandlerFunc(httpJSONHandler))
+	mux.Handle("/"				, http.HandlerFunc(httpIndexHandler))
+	
+	server = http.Server {
+		ErrorLog		: log.New(ioutil.Discard, "", 0),
+		Handler			: mux,
+		ReadTimeout		: config.HTTP.TimeoutRead .Duration,
+		WriteTimeout	: config.HTTP.TimeoutWrite.Duration,
+		IdleTimeout		: config.HTTP.TimeoutIdle .Duration,
+	}
+	
+	listener, err := net.Listen(config.HTTP.Type, config.HTTP.Listen)
+	if err != nil {
+		panic(err)
+	}
+	
+	err = server.Serve(listener)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func restartHTTPServer() {
+	err := server.Shutdown(nil)
+	if err != nil {
+		panic(err)
+	}
+
+	startHTTPServer()
+}
+
 
 func httpIndexHandler(w http.ResponseWriter, r *http.Request) {
 	pageLock.RLock()

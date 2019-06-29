@@ -7,11 +7,16 @@ import (
 	"time"
 )
 
+const (
+	defaultConfigPath = "./config.json"
+)
+
 type Config struct {
 	Host					map[string]ConfigHost	`json:"host"`
 	HTTP					ConfigHTTP				`json:"http"`
 	DNS						ConfigDNS				`json:"dns"`
 	Test					ConfigTest				`json:"test"`
+	RPC						ConfigRPC				`json:"rpc"`
 }
 type ConfigHost struct {
 	Host					string					`json:"host"`
@@ -40,6 +45,7 @@ type ConfigDNS struct {
 	DNSLookupInterval		TimeDuration			`json:"dns_lookup_interval"`
 }
 type ConfigTest struct {
+	RefreshInterval			TimeDuration			`json:"refresh_interval"`
 	ThreatCrowdExpire		TimeDuration			`json:"threatcrowd_expire"`
 	PingCount				int						`json:"ping_count"`
 	PingTimeout				TimeDuration			`json:"ping_timeout"`
@@ -48,11 +54,15 @@ type ConfigTest struct {
 	HTTPBufferSize			int						`json:"http_buffersize"`
 	GeoIP2Path				string					`json:"geoip2_path"`
 }
+type ConfigRPC struct {
+	Network					string					`json:"network"`
+	Address					string					`json:"address"`
+}
 
 var config Config
 
-func loadConfig() {
-	fs, err := os.Open("config.json")
+func loadConfig(path string) {
+	fs, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}

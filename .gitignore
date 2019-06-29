@@ -10,5 +10,4 @@ debug
 bin-*/
 *.cache.*
 
-r2x
-
+bin/

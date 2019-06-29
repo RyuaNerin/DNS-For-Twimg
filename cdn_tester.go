@@ -1,20 +1,23 @@
 package main
 
 import (
-	"encoding/hex"
+	"log"
 	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math"
 	"net"
 	"net/http"
+	//"net/url"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	//"github.com/garyburd/go-oauth/oauth"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/sparrc/go-ping"
 )
@@ -83,6 +86,63 @@ type resolutions struct {
 }
 type threatCrowdAPIResult struct {
 	Resolutions		[]resolutions `json:"resolutions"`
+}
+
+func refreshCdn() {
+	nextTime := time.Now().Truncate(time.Hour)
+
+	for {
+		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
+
+		go refreshCdnWorker()
+
+		time.Sleep(time.Until(nextTime))
+	}
+}
+
+func refreshCdnWorker() {
+	var cdnTestResult CdnStatusCollection
+
+	if !cdnTestResult.TestCdn() {
+		return
+	}
+	
+	setHTTPPage(cdnTestResult)
+	setDNSHostIP(cdnTestResult)
+
+	{
+		var sb strings.Builder
+		sb.WriteString("CdnResults Updated\n")
+		
+		for host, cdn := range cdnTestResult {
+			sb.WriteString(fmt.Sprintf("\t%s : %s (Total %d Cdn)\n", host, cdn[0].IP.String(), len(cdn)))
+		}
+
+		log.Println(sb.String())
+	}
+
+	/*
+	oauthClient := oauth.Client {
+		Credentials : oauth.Credentials {
+			Token : "",
+			Secret : "",
+		},
+		Header : make(http.Header),
+	}
+	userToken := oauth.Credentials{
+		Token: "",
+		Secret : "",
+	}	
+	oauthClient.Header.Set("Accept-Encoding", "gzip, defalte")
+
+	postData := url.Values {}
+	postData.Set("status", "")
+
+	resp, err := oauthClient.Post(http.DefaultClient, &userToken, "https://api.twitter.com/1.1/statuses/update.json", postData)
+	if err == nil {
+		resp.Body.Close()
+	}
+	*/
 }
 
 func (c *CdnStatusCollection) TestCdn() (ok bool) {

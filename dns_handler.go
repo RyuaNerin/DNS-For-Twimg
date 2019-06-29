@@ -18,19 +18,18 @@ type dnsHandler struct {
 }
 
 func newDNSHandler() (handler *dnsHandler) {
-	handler.cache = MemoryCache {
-		Backend		: make(map[string]Mesg),
-		Expire		: config.DNS.ServerCacheExpire.Duration,
-		Maxcount	: config.DNS.ServerCacheMaxCount,
+	return &dnsHandler {
+		cache : MemoryCache {
+			Backend		: make(map[string]Mesg),
+			Expire		: config.DNS.ServerCacheExpire.Duration,
+			Maxcount	: config.DNS.ServerCacheMaxCount,
+		},
+		negCache : MemoryCache{
+			Backend		: make(map[string]Mesg),
+			Expire		: config.DNS.ServerCacheExpire.Duration,
+			Maxcount	: config.DNS.ServerCacheMaxCount,
+		},
 	}
-
-	handler.negCache = MemoryCache{
-		Backend		: make(map[string]Mesg),
-		Expire		: config.DNS.ServerCacheExpire.Duration,
-		Maxcount	: config.DNS.ServerCacheMaxCount,
-	}
-
-	return
 }
 
 func (h *dnsHandler) HandleTCP(w dns.ResponseWriter, req *dns.Msg) {
@@ -110,7 +109,6 @@ func (h *dnsHandler) handleTwimg(w dns.ResponseWriter, req *dns.Msg) (pass bool)
 	}
 
 	for _, q := range req.Question {
-
 		dnsTwimgIPLock.RLock()
 		ip, ok := dnsTwimgIP[q.Name]
 		dnsTwimgIPLock.RUnlock()
