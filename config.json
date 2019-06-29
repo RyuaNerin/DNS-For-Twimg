@@ -187,7 +187,7 @@
 		"dns_lookup_interval" 	: "200ms"
 	},
 	"test" : {
-		"refresh_interval" : "30m",
+		"refresh_interval" : "15m",
 
 		"threatcrowd_expire" : "8760h",
 
