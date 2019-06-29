@@ -12,17 +12,17 @@ import (
 )
 
 type KeyNotFound struct {
-	key string
+	q Question
 }
 func (e KeyNotFound) Error() string {
-	return e.key + " " + "not found"
+	return e.q.hash + " " + "not found"
 }
 
 type KeyExpired struct {
-	Key string
+	q Question
 }
 func (e KeyExpired) Error() string {
-	return e.Key + " " + "expired"
+	return e.q.hash + " " + "expired"
 }
 
 type CacheIsFull struct {
@@ -66,45 +66,45 @@ func newQuestion(qname string, qtype uint16, qclass uint16) (q Question) {
 	return
 }
 
-func (c *MemoryCache) Get(key string) (*dns.Msg, error) {
+func (c *MemoryCache) Get(q Question) (*dns.Msg, error) {
 	c.mu.RLock()
-	mesg, ok := c.Backend[key]
+	mesg, ok := c.Backend[q.hash]
 	c.mu.RUnlock()
 	if !ok {
-		return nil, KeyNotFound{key}
+		return nil, KeyNotFound{q}
 	}
 
 	if mesg.Expire.Before(time.Now()) {
-		c.Remove(key)
-		return nil, KeyExpired{key}
+		c.Remove(q)
+		return nil, KeyExpired{q}
 	}
 
 	return mesg.Msg, nil
 }
 
-func (c *MemoryCache) Set(key string, msg *dns.Msg) error {
-	if c.Full() && !c.Exists(key) {
+func (c *MemoryCache) Set(q Question, msg *dns.Msg) error {
+	if c.Full() && !c.Exists(q) {
 		return CacheIsFull{}
 	}
 
 	expire := time.Now().Add(c.Expire)
 	mesg := Mesg{msg, expire}
 	c.mu.Lock()
-	c.Backend[key] = mesg
+	c.Backend[q.hash] = mesg
 	c.mu.Unlock()
 	return nil
 }
 
-func (c *MemoryCache) Remove(key string) error {
+func (c *MemoryCache) Remove(q Question) error {
 	c.mu.Lock()
-	delete(c.Backend, key)
+	delete(c.Backend, q.hash)
 	c.mu.Unlock()
 	return nil
 }
 
-func (c *MemoryCache) Exists(key string) bool {
+func (c *MemoryCache) Exists(q Question) bool {
 	c.mu.RLock()
-	_, ok := c.Backend[key]
+	_, ok := c.Backend[q.hash]
 	c.mu.RUnlock()
 	return ok
 }

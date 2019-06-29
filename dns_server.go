@@ -24,7 +24,7 @@ type DNSServer struct {
 	dnsUDP		dns.Server
 
 	cdnLock		sync.Mutex
-	cdnHostKeys	[]string
+	cdnHostQ	[]Question
 }
 
 var dnsServer = DNSServer {
@@ -44,10 +44,10 @@ func (sv *DNSServer) SetCDN(c CdnStatusCollection) {
 	sv.cdnLock.Lock()
 	defer sv.cdnLock.Unlock()
 
-	for _, key := range sv.cdnHostKeys {
+	for _, key := range sv.cdnHostQ {
 		sv.cache.Remove(key)
 	}
-	sv.cdnHostKeys = sv.cdnHostKeys[:0]
+	sv.cdnHostQ = sv.cdnHostQ[:0]
 
 	for host, result := range c {
 		if len(result) == 0 {
@@ -88,8 +88,8 @@ func (sv *DNSServer) addMsg(host string, qType uint16, rr dns.RR) {
 		m.Answer = append(m.Answer, rr)
 	}
 	
-	sv.cdnHostKeys = append(sv.cdnHostKeys, q.hash)
-	sv.cache.Set(q.hash, m)
+	sv.cdnHostQ = append(sv.cdnHostQ, q)
+	sv.cache.Set(q, m)
 }
 
 func (sv *DNSServer) Start() {
@@ -160,9 +160,9 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 
 	// Only query cache when qtype == 'A'|'AAAA' , qclass == 'IN'
 	if IPQuery > 0 {
-		mesg, err := sv.cache.Get(Q.hash)
+		mesg, err := sv.cache.Get(Q)
 		if err != nil {
-			if mesg, err = sv.negCache.Get(Q.hash); err != nil {
+			if mesg, err = sv.negCache.Get(Q); err != nil {
 				log.Printf("%s didn't hit cache\n", Q.String())
 			} else {
 				log.Printf("%s hit negative cache\n", Q.String())
@@ -186,7 +186,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 		dns.HandleFailed(w, req)
 
 		// cache the failure, too!
-		if err = sv.negCache.Set(Q.hash, nil); err != nil {
+		if err = sv.negCache.Set(Q, nil); err != nil {
 			log.Printf("Set %s negative cache failed: %v", Q.String(), err)
 		}
 		return
@@ -195,7 +195,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	w.WriteMsg(mesg)
 
 	if IPQuery > 0 && len(mesg.Answer) > 0 {
-		err = sv.cache.Set(Q.hash, mesg)
+		err = sv.cache.Set(Q, mesg)
 		if err != nil {
 			log.Printf("Set %s cache failed: %s", Q.String(), err.Error())
 		}
