@@ -87,19 +87,16 @@ func (sv *DNSServer) addMsg(host string, qType uint16, rr dns.RR) {
 }
 
 func (sv *DNSServer) Start() {
-	sv.dnsTCPMux.HandleFunc(".", sv.HandleTCP)
-	sv.dnsUDPMux.HandleFunc(".", sv.handleUDP)
-
-	sv.dnsTCP = dns.Server{
+	sv.dnsTCP = dns.Server {
 		Net				: "tcp",
-		Handler			: &sv.dnsTCPMux,
+		Handler			: dns.HandlerFunc(sv.HandleTCP),
 		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
 		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,
 	}
 
 	sv.dnsUDP = dns.Server {
 		Net				: "udp",
-		Handler			: &sv.dnsUDPMux,
+		Handler			: dns.HandlerFunc(sv.handleUDP),
 		UDPSize			: 65535,
 		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
 		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,

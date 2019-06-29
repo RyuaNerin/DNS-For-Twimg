@@ -89,14 +89,14 @@ type threatCrowdAPIResult struct {
 }
 
 func refreshCdn() {
-	nextTime := time.Now().Truncate(time.Hour)
-
 	for {
+		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
+		
+		time.Sleep(time.Until(nextTime))
 
 		go refreshCdnWorker()
 
-		time.Sleep(time.Until(nextTime))
 	}
 }
 

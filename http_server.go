@@ -16,7 +16,7 @@ import (
 )
 
 type HTTPServer struct {
-	serverMux		http.ServeMux
+	serverMux		*http.ServeMux
 	server			http.Server
 
 	pageLock		sync.RWMutex
@@ -29,13 +29,18 @@ type HTTPServer struct {
 var httpServer HTTPServer
 
 func (sv *HTTPServer) Start() {
-	sv.serverMux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
-	sv.serverMux.Handle("/json"			, http.HandlerFunc(sv.httpJSONHandler))
-	sv.serverMux.Handle("/"				, http.HandlerFunc(sv.httpIndexHandler))
+	
+	if sv.serverMux == nil {
+		sv.serverMux = http.NewServeMux()
+
+		sv.serverMux.Handle("/resources/"	, http.FileServer(http.Dir("resources")))
+		sv.serverMux.Handle("/json"			, http.HandlerFunc(sv.httpJSONHandler))
+		sv.serverMux.Handle("/"				, http.HandlerFunc(sv.httpIndexHandler))
+	}
 
 	sv.server = http.Server {
 		ErrorLog		: log.New(ioutil.Discard, "", 0),
-		Handler			: &sv.serverMux,
+		Handler			: sv.serverMux,
 		ReadTimeout		: config.HTTP.TimeoutRead .Duration,
 		WriteTimeout	: config.HTTP.TimeoutWrite.Duration,
 		IdleTimeout		: config.HTTP.TimeoutIdle .Duration,
