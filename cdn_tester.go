@@ -138,7 +138,7 @@ func (ct *CDNTester) loadLastJson() {
 	ct.setCdnResult(cdnTestResult)
 }
 func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
-	fs, err := os.OpenFile(config.Test.LastResultPath, os.O_CREATE, 644)
+	fs, err := os.OpenFile(config.Test.LastResultPath, os.O_CREATE | os.O_WRONLY, 644)
 	if err != nil {
 		log.Println(err)
 		return
