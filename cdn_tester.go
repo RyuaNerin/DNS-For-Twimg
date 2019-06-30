@@ -1,19 +1,20 @@
 package main
 
 import (
-	"hash/fnv"
 	"bytes"
-	"html/template"
-	"log"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
+	"html/template"
 	"io"
+	"log"
 	"math"
 	"net"
 	"net/http"
 	//"net/url"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -61,10 +62,6 @@ type CdnStatusHTTP struct {
 	BpsAvg			float64EIC		`json:"bps_avg"`
 	BpsMax			float64EIC		`json:"bps_max"`
 }
-type cdnStatusTester struct {
-	Host		ConfigHost
-	cdnList		map[string]*CdnStatus
-}
 
 type float64F float64
 func (f float64F) String() string {
@@ -102,41 +99,85 @@ type CDNTester struct {
 var cdnTester CDNTester
 
 func (ct *CDNTester) Start() {
+	ct.loadLastJson()
+
+	go ct.loop()
+}
+
+func (ct *CDNTester) loop() {
 	for {
 		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
 		
-		time.Sleep(time.Until(nextTime))
-
 		go ct.worker()
-
+		
+		time.Sleep(time.Until(nextTime))
 	}
 }
 
-func (sv *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
-	sv.pageLock.RLock()
-	defer sv.pageLock.RUnlock()
+func (ct *CDNTester) loadLastJson() {
+	fs, err := os.Open(config.Test.LastResultPath)
+	if os.IsNotExist(err) {
+		return
+	}
+	if err != nil && !os.IsNotExist(err) {
+		log.Println(err)
+		return
+	}
+	defer fs.Close()
 
-	if sv.pageIndex == nil {
+	cdnTestResult := make(CdnStatusCollection)
+	err = json.NewDecoder(fs).Decode(&cdnTestResult)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	dnsServer.SetCDN(cdnTestResult)
+	ct.setCdnResult(cdnTestResult)
+}
+func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
+	fs, err := os.OpenFile(config.Test.LastResultPath, os.O_CREATE, 644)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer fs.Close()
+
+	fs.Truncate(0)
+	fs.Seek(0, 0)
+
+	err = json.NewEncoder(fs).Encode(cdnTestResult)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
+	ct.pageLock.RLock()
+	defer ct.pageLock.RUnlock()
+
+	if ct.pageIndex == nil {
 		w.WriteHeader(http.StatusNoContent)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/html")
-		w.Header().Set("ETag", sv.pageIndexEtag)
-		w.Write(sv.pageIndex)
+		w.Header().Set("ETag", ct.pageIndexEtag)
+		w.Write(ct.pageIndex)
 	}
 }
-func (sv *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
-	sv.pageLock.RLock()
-	defer sv.pageLock.RUnlock()
+func (ct *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
+	ct.pageLock.RLock()
+	defer ct.pageLock.RUnlock()
 
-	if sv.pageJSON == nil {
+	if ct.pageJSON == nil {
 		w.WriteHeader(http.StatusNoContent)
 	} else {
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/json")
-		w.Header().Set("ETag", sv.pageJSONEtag)
-		w.Write(sv.pageJSON)
+		w.Header().Set("ETag", ct.pageJSONEtag)
+		w.Write(ct.pageJSON)
 	}
 }
 
@@ -146,9 +187,11 @@ type TemplateData struct {
 	Detail		CdnStatusCollection		`json:"detail"`
 }
 
-func (sv *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
-	sv.pageLock.Lock()
-	defer sv.pageLock.Unlock()
+func (ct *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
+	ct.pageLock.Lock()
+	defer ct.pageLock.Unlock()
+
+	ct.saveLastJson(cdnTestResult)
 
 	data := TemplateData {
 		UpdatedAt	: time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
@@ -166,8 +209,8 @@ func (sv *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
 		if err == nil {
 			err = t.Execute(buff, &data)
 			if err == nil {
-				sv.pageIndex		= buff.Bytes()
-				sv.pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageIndex)))
+				ct.pageIndex		= buff.Bytes()
+				ct.pageIndexEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(ct.pageIndex)))
 			}
 		}
 	}
@@ -177,21 +220,24 @@ func (sv *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
 		buff := new(bytes.Buffer)
 		err := json.NewEncoder(buff).Encode(&data)
 		if err == nil {
-			sv.pageJSON		= buff.Bytes()
-			sv.pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(sv.pageJSON)))
+			ct.pageJSON		= buff.Bytes()
+			ct.pageJSONEtag	= fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(ct.pageJSON)))
 		}
 	}
 }
 
 func (ct *CDNTester) worker() {
-	var cdnTestResult CdnStatusCollection
+	cdnTestResult := make(CdnStatusCollection)
 
-	if !cdnTestResult.TestCdn() {
-		return
+	log.Println("CdnResults Update")
+
+	var w sync.WaitGroup	
+	for _, host := range config.Host {
+		w.Add(1)
+
+		go ct.testCdn(&w, host, cdnTestResult)
 	}
-	
-	dnsServer.SetCDN(cdnTestResult)
-	ct.setCdnResult(cdnTestResult)
+	w.Wait()
 
 	{
 		var sb strings.Builder
@@ -203,6 +249,21 @@ func (ct *CDNTester) worker() {
 
 		log.Println(sb.String())
 	}
+
+	succ := false
+	for _, r := range cdnTestResult {
+		if len(r) > 0 {
+			succ = true
+			break
+		}
+	}
+
+	if !succ {
+		return
+	}
+	
+	dnsServer.SetCDN(cdnTestResult)
+	ct.setCdnResult(cdnTestResult)
 
 	/*
 	oauthClient := oauth.Client {
@@ -228,64 +289,53 @@ func (ct *CDNTester) worker() {
 	*/
 }
 
-func (c *CdnStatusCollection) TestCdn() (ok bool) {
-	*c = make(CdnStatusCollection)
-	for _, host := range config.Host {
-		t := cdnStatusTester {
-			Host : host,
-		}
+func (ct *CDNTester) testCdn(w *sync.WaitGroup, host ConfigHost, m CdnStatusCollection) {
+	defer w.Done()
+	
+	cdnList := make(map[string]*CdnStatus)
 
-		lst := t.TestCdn()
-		if len(lst) > 0 {
-			ok = true
-			(*c)[host.Host] = lst
-		}
-	}
-
-	return
-}
-
-func (ct *cdnStatusTester) TestCdn() (cdnList []CdnStatus) {
-	ct.cdnList = make(map[string]*CdnStatus)
-
-	ct.getDefaultCdn()
-	ct.getCdnListFromThreatCrowd()
+	ct.addDefaultCdn(host, cdnList)
+	ct.addAdditionalCdn(host, cdnList)
+	ct.addCdnListFromThreatCrowd(host, cdnList)
 	
 	// ping
-	ct.parallel(ct.testPingTask)
-	ct.filterCdn(func(cs CdnStatus) bool { return cs.PingSuccess })
+	ct.parallel(host, cdnList, ct.testPingTask)
+	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.PingSuccess })
 
 	// country
-	ct.getCountry()
+	ct.getCountry(host, cdnList)
 
 	// arpa
-	ct.parallel(ct.getDomainTask)
+	ct.parallel(host, cdnList, ct.getDomainTask)
 
 	// http-speed
-	ct.parallel(ct.testHTTPTask)
-	ct.filterCdn(func(cs CdnStatus) bool { return cs.HTTPSuccess })
+	ct.parallel(host, cdnList, ct.testHTTPTask)
+	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.HTTPSuccess })
 
-	for _, r := range ct.cdnList {
-		cdnList = append(cdnList, *r)
+	cdnArray := make([]CdnStatus, len(cdnList))
+	for _, r := range cdnList {
+		cdnArray = append(cdnArray, *r)
 	}
 
-	sort.Slice(cdnList, func(i, k int) bool { return cdnList[i].HTTP.BpsAvg > cdnList[k].HTTP.BpsAvg })
+	if len(cdnArray) > 0 {
+		sort.Slice(cdnArray, func(i, k int) bool { return cdnArray[i].HTTP.BpsAvg > cdnArray[k].HTTP.BpsAvg })
 
-	return
+		m[host.Host] = cdnArray
+	}
 }
 
-func (ct *cdnStatusTester) filterCdn(skip func(cs CdnStatus) bool) {
-	for host, status := range ct.cdnList {
+func (ct *CDNTester) filterCdn(host ConfigHost, cdnList map[string]*CdnStatus, skip func(cs CdnStatus) bool) {
+	for host, status := range cdnList {
 		if !skip(*status) {
-			delete(ct.cdnList, host)
+			delete(cdnList, host)
 		}
 	}
 }
 
-func (ct *cdnStatusTester) getDefaultCdn() {
-	addr, err := defaultDNSResolver.Resolve(ct.Host.Host)
+func (ct *CDNTester) addDefaultCdn(host ConfigHost, cdnList map[string]*CdnStatus) {
+	addr, err := defaultDNSResolver.Resolve(host.Host)
 	if err == nil && addr.String() != "" {
-		ct.cdnList[addr.String()] = &CdnStatus {
+		cdnList[addr.String()] = &CdnStatus {
 			IP			: addr,
 			DefaultCdn	: true,
 		}
@@ -294,8 +344,8 @@ func (ct *cdnStatusTester) getDefaultCdn() {
 	return
 }
 
-func (ct *cdnStatusTester) getCdnListFromThreatCrowd() {
-	hres, err := http.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + ct.Host.Host)
+func (ct *CDNTester) addCdnListFromThreatCrowd(host ConfigHost, cdnList map[string]*CdnStatus) {
+	hres, err := http.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host.Host)
 	if err != nil {
 		panic(err)
 	}
@@ -322,8 +372,8 @@ func (ct *cdnStatusTester) getCdnListFromThreatCrowd() {
 		ip := net.ParseIP(resolution.IPAdddress)
 		if ip.To4() != nil && ip.String() != "" {
 			ipstr := ip.String()
-			if _, ok := ct.cdnList[ipstr]; !ok {
-				ct.cdnList[ipstr] = &CdnStatus {
+			if _, ok := cdnList[ipstr]; !ok {
+				cdnList[ipstr] = &CdnStatus {
 					IP : ip,
 				}
 			}
@@ -333,18 +383,37 @@ func (ct *cdnStatusTester) getCdnListFromThreatCrowd() {
 	return
 }
 
-func (ct *cdnStatusTester) parallel(task func(w *sync.WaitGroup, cdn *CdnStatus)) {
-	var w sync.WaitGroup
-	w.Add(len(ct.cdnList))
+func (ct *CDNTester) addAdditionalCdn(host ConfigHost, cdnList map[string]*CdnStatus) {
+	for _, addr := range host.CDN {
+		ip := net.ParseIP(addr)
 
-	for ip := range ct.cdnList {
-		go task(&w, ct.cdnList[ip])
+		if ip != nil {
+			cdnList[ip.To4().String()] = &CdnStatus {
+				IP : ip,
+			}
+		} else {
+			ip, err := defaultDNSResolver.Resolve(addr)
+			if err == nil && ip.String() != "" {
+				cdnList[ip.String()] = &CdnStatus {
+					IP : ip,
+				}
+			}
+		}
+	}
+}
+
+func (ct *CDNTester) parallel(host ConfigHost, cdnList map[string]*CdnStatus, task func(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus)) {
+	var w sync.WaitGroup
+	w.Add(len(cdnList))
+
+	for ip := range cdnList {
+		go task(&w, host, cdnList[ip])
 	}
 
 	w.Wait()
 }
 
-func (ct *cdnStatusTester) testPingTask(w *sync.WaitGroup, cdn *CdnStatus) {
+func (ct *CDNTester) testPingTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
 	defer w.Done()
 
 	pinger, err := ping.NewPinger(cdn.IP.String())
@@ -370,14 +439,14 @@ func (ct *cdnStatusTester) testPingTask(w *sync.WaitGroup, cdn *CdnStatus) {
 	cdn.PingSuccess = stat.PacketsRecv > 0
 }
 
-func (ct *cdnStatusTester) getCountry() {
+func (ct *CDNTester) getCountry(host ConfigHost, cdnList map[string]*CdnStatus) {
     db, err := geoip2.Open(config.Test.GeoIP2Path)
     if err != nil {
 		panic(err)
     }
 	defer db.Close()
 	
-	for _, status := range ct.cdnList {
+	for _, status := range cdnList {
 		city, err := db.City(status.IP)
 		if err != nil {
 			continue
@@ -388,7 +457,7 @@ func (ct *cdnStatusTester) getCountry() {
 	}
 }
 
-func (ct *cdnStatusTester) getDomainTask(w *sync.WaitGroup, cdn *CdnStatus) {
+func (ct *CDNTester) getDomainTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
 	defer w.Done()
 
 	names, err := net.LookupAddr(cdn.IP.String())
@@ -404,13 +473,13 @@ func (ct *cdnStatusTester) getDomainTask(w *sync.WaitGroup, cdn *CdnStatus) {
 	}
 }
 
-func (ct *cdnStatusTester) testHTTPTask(w *sync.WaitGroup, cdn *CdnStatus) {
+func (ct *CDNTester) testHTTPTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
 	defer w.Done()
 
 	client := http.Client {
 		Timeout   : config.Test.HTTPTimeout.Duration,
 		Transport : &http.Transport {
-			Dial				: func(network, addr string) (net.Conn, error) { return net.Dial(network, strings.ReplaceAll(addr, ct.Host.Host, cdn.IP.String())) },
+			Dial				: func(network, addr string) (net.Conn, error) { return net.Dial(network, strings.ReplaceAll(addr, host.Host, cdn.IP.String())) },
 			DisableKeepAlives	: true,
 		},
 	}
@@ -421,7 +490,7 @@ func (ct *cdnStatusTester) testHTTPTask(w *sync.WaitGroup, cdn *CdnStatus) {
 
 	buff := make([]byte, config.Test.HTTPBufferSize)
 	for i := 0; i < config.Test.HTTPCount; i++ {
-		for _, test := range ct.Host.Test {
+		for _, test := range host.Test {
 			cdn.HTTP.Reqeust++
 			hreq, err := http.NewRequest("GET", test.URL, nil)
 			if err != nil {

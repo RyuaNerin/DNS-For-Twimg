@@ -20,6 +20,7 @@ type Config struct {
 }
 type ConfigHost struct {
 	Host					string					`json:"host"`
+	CDN						[]string				`json:"cdn"`
 	Test					[]CnofigHostTest		`json:"test"`
 }
 type CnofigHostTest struct {
@@ -48,6 +49,7 @@ type ConfigDNS struct {
 }
 type ConfigTest struct {
 	RefreshInterval			TimeDuration			`json:"refresh_interval"`
+	LastResultPath			string					`json:"last-result-path"`
 
 	ThreatCrowdExpire		TimeDuration			`json:"threatcrowd_expire"`
 
