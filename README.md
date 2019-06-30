@@ -40,6 +40,7 @@
 	go get github.com/garyburd/go-oauth/oauth
 	go get github.com/miekg/dns
 	go get github.com/oschwald/geoip2-golang
+	go get github.com/sirupsen/logrus
 	go get github.com/sparrc/go-ping
 	```
 
