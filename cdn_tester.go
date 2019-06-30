@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/sirupsen/logrus"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -9,7 +10,6 @@ import (
 	"hash/fnv"
 	"html/template"
 	"io"
-	"log"
 	"math"
 	"net"
 	"net/http"
@@ -122,7 +122,7 @@ func (ct *CDNTester) loadLastJson() {
 		return
 	}
 	if err != nil && !os.IsNotExist(err) {
-		log.Println(err)
+		logRusPanic.Error(err)
 		return
 	}
 	defer fs.Close()
@@ -130,7 +130,7 @@ func (ct *CDNTester) loadLastJson() {
 	cdnTestResult := make(CdnStatusCollection)
 	err = json.NewDecoder(fs).Decode(&cdnTestResult)
 	if err != nil {
-		log.Println(err)
+		logRusPanic.Error(err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (ct *CDNTester) loadLastJson() {
 func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
 	fs, err := os.OpenFile(config.Test.LastResultPath, os.O_CREATE | os.O_WRONLY, 644)
 	if err != nil {
-		log.Println(err)
+		logRusPanic.Error(err)
 		return
 	}
 	defer fs.Close()
@@ -150,7 +150,7 @@ func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
 
 	err = json.NewEncoder(fs).Encode(cdnTestResult)
 	if err != nil {
-		log.Println(err)
+		logRusPanic.Error(err)
 		return
 	}
 }
@@ -230,7 +230,7 @@ func (ct *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
 func (ct *CDNTester) worker() {
 	cdnTestResult := make(CdnStatusCollection)
 
-	log.Println("CdnResults Update")
+	logrus.Info("cdn - update")
 
 	var w sync.WaitGroup	
 	for _, host := range config.Host {
@@ -242,13 +242,13 @@ func (ct *CDNTester) worker() {
 
 	{
 		var sb strings.Builder
-		sb.WriteString("CdnResults Updated\n")
+		sb.WriteString("cdn - updated\n")
 		
 		for host, cdn := range cdnTestResult {
 			sb.WriteString(fmt.Sprintf("\t%s : %s (Total %d Cdn)\n", host, cdn[0].IP.String(), len(cdn)))
 		}
 
-		log.Println(sb.String())
+		logrus.Info(sb.String())
 	}
 
 	succ := false

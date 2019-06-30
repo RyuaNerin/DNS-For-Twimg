@@ -220,5 +220,6 @@
 	"rpc" : {
 		"network" : "tcp",
 		"address" : "127.0.0.1:55430"
-	}
+	},
+	"log-level" : 4
 }

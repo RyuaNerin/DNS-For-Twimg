@@ -17,6 +17,7 @@ type Config struct {
 	DNS						ConfigDNS				`json:"dns"`
 	Test					ConfigTest				`json:"test"`
 	RPC						ConfigRPC				`json:"rpc"`
+	LogLevel				int						`json:"log-level"`
 }
 type ConfigHost struct {
 	Host					string					`json:"host"`

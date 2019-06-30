@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"net"
 	"sync"
-
+	
 	"github.com/miekg/dns"
+	"github.com/sirupsen/logrus"
 )
 
 type DNSServer struct {
@@ -145,7 +145,11 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	} else {
 		remote = w.RemoteAddr().(*net.UDPAddr).IP
 	}
-	log.Printf("%s lookup　%s\n", remote, Q.String())
+
+	logrus.WithFields(logrus.Fields {
+		"remote"	: remote,
+		"query"		: Q.String(),
+		}).Debug("lookup")
 
 	isIPQuery := sv.isIPQuery(q)
 
@@ -154,14 +158,22 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 		mesg, err := sv.cache.Get(Q)
 		if err != nil {
 			if mesg, err = sv.negCache.Get(Q); err != nil {
-				log.Printf("%s didn't hit cache\n", Q.String())
+				logrus.WithFields(logrus.Fields {
+					"query"		: Q.String(),
+					}).Debug("no cache")
 			} else {
-				log.Printf("%s hit negative cache\n", Q.String())
+				logrus.WithFields(logrus.Fields {
+					"query"		: Q.String(),
+					}).Debug("negative cache")
+
 				dns.HandleFailed(w, req)
 				return
 			}
 		} else {
-			log.Printf("%s hit cache\n", Q.String())
+			logrus.WithFields(logrus.Fields {
+				"query"		: Q.String(),
+				}).Debug("hit cache")
+
 			// we need this copy against concurrent modification of Id
 			msg := *mesg
 			msg.Id = req.Id
@@ -173,12 +185,18 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	mesg, err := defaultDNSResolver.Lookup(network, req)
 
 	if err != nil {
-		log.Printf("Resolve query error %s\n", err)
+		logrus.WithFields(logrus.Fields {
+			"error"	: err.Error(),
+			}).Debug("Resolve query error")
+
 		dns.HandleFailed(w, req)
 
 		// cache the failure, too!
 		if err = sv.negCache.Set(Q, nil); err != nil {
-			log.Printf("Set %s negative cache failed: %v", Q.String(), err)
+			logrus.WithFields(logrus.Fields {
+				"query" : Q.String(),
+				"error"	: err.Error(),
+				}).Debug("set negative cache failed")
 		}
 		return
 	}
@@ -188,9 +206,15 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	if isIPQuery && len(mesg.Answer) > 0 {
 		err = sv.cache.Set(Q, mesg)
 		if err != nil {
-			log.Printf("Set %s cache failed: %s", Q.String(), err.Error())
+			logrus.WithFields(logrus.Fields {
+				"query" : Q.String(),
+				"error"	: err.Error(),
+				}).Debug("set cache failed")
+		} else {
+			logrus.WithFields(logrus.Fields {
+				"query" : Q.String(),
+				}).Debug("set cache")
 		}
-		log.Printf("Insert %s into cache", Q.String())
 	}
 }
 

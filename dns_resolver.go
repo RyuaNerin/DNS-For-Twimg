@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"sync"
 	"time"
-
+	
 	"github.com/miekg/dns"
+	"github.com/sirupsen/logrus"
 )
 
 type dnsResolver struct {
@@ -81,8 +81,11 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
-			log.Printf("%s socket error on %s\n", qname, nameserver)
-			log.Printf("error:%s\n", err.Error())
+			logrus.WithFields(logrus.Fields {
+				"qname"			: qname,
+				"nameserver"	: nameserver,
+				"err"			: err.Error(),
+				}).Debug("socket error")
 			return
 		}
 		// If SERVFAIL happen, should return immediately and try another upstream resolver.
@@ -90,7 +93,11 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		// that it has been verified no such domain existas and ask other resolvers
 		// would make no sense. See more about #20
 		if r != nil && r.Rcode != dns.RcodeSuccess {
-			log.Printf("%s failed to get an valid answer on %s\n", qname, nameserver)
+			logrus.WithFields(logrus.Fields {
+				"qname"			: qname,
+				"nameserver"	: nameserver,
+				}).Debug("failed to get an valid answer")
+
 			if r.Rcode == dns.RcodeServerFailure {
 				return
 			}
@@ -113,7 +120,12 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		// but exit early, if we have an answer
 		select {
 		case re := <-res:
-			log.Printf("%s resolv on %s rtt: %v\n", qname, re.nameserver, re.rtt)
+			logrus.WithFields(logrus.Fields {
+				"qname"			: qname,
+				"nameserver"	: re.nameserver,
+				"rtt"			: re.rtt,
+				}).Debug("host resolved")
+
 			return re.msg, nil
 		case <-ticker.C:
 			continue
@@ -123,7 +135,12 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 	wg.Wait()
 	select {
 	case re := <-res:
-		log.Printf("%s resolv on %s rtt: %v\n", qname, re.nameserver, re.rtt)
+		logrus.WithFields(logrus.Fields {
+			"qname"			: qname,
+			"nameserver"	: re.nameserver,
+			"rtt"			: re.rtt,
+			}).Debug("host resolved")
+
 		return re.msg, nil
 	default:
 		return nil, ResolvError{qname, net, nameservers}
