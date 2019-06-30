@@ -25,6 +25,7 @@ import (
 	"github.com/oschwald/geoip2-golang"
 	"github.com/sparrc/go-ping"
 )
+
 type CdnStatusCollection map[string][]CdnStatus
 type CdnStatus struct {
 	IP				net.IP			`json:"ip"`
@@ -388,17 +389,18 @@ func (ct *CDNTester) addAdditionalCdn(host ConfigHost, cdnList map[string]*CdnSt
 		ip := net.ParseIP(addr)
 
 		if ip != nil {
-			cdnList[ip.To4().String()] = &CdnStatus {
-				IP : ip,
-			}
-		} else {
 			ip, err := defaultDNSResolver.Resolve(addr)
 			if err == nil && ip.String() != "" {
-				cdnList[ip.String()] = &CdnStatus {
-					IP : ip,
-				}
+				continue
 			}
 		}
+
+		if _, exists := cdnList[ip.String()]; !exists {
+			cdnList[ip.String()] = &CdnStatus {
+				IP : ip,
+			}
+		}
+
 	}
 }
 
