@@ -312,7 +312,7 @@ func (ct *CDNTester) testCdn(w *sync.WaitGroup, host ConfigHost, m CdnStatusColl
 	ct.parallel(host, cdnList, ct.testHTTPTask)
 	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.HTTPSuccess })
 
-	cdnArray := make([]CdnStatus, len(cdnList))
+	cdnArray := make([]CdnStatus, 0, len(cdnList))
 	for _, r := range cdnList {
 		cdnArray = append(cdnArray, *r)
 	}
