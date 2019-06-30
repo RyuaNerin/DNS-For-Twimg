@@ -34,7 +34,6 @@ func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
 
 	req := new(dns.Msg)
 	req.SetQuestion(host, dns.TypeA)
-	req.SetQuestion(host, dns.TypeAAAA)
 	
 	msg, err := h.Lookup("udp", req)
 	if err != nil {
@@ -46,10 +45,6 @@ func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
 		case dns.TypeA:
 			a := ans.(*dns.A)
 			return a.A, nil
-
-		case dns.TypeAAAA:
-			aaaa := ans.(*dns.AAAA)
-			return aaaa.AAAA, nil
 		}
 	}
 
