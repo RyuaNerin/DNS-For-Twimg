@@ -388,9 +388,10 @@ func (ct *CDNTester) addAdditionalCdn(host ConfigHost, cdnList map[string]*CdnSt
 	for _, addr := range host.CDN {
 		ip := net.ParseIP(addr)
 
-		if ip != nil {
-			ip, err := defaultDNSResolver.Resolve(addr)
-			if err == nil && ip.String() != "" {
+		if ip == nil {
+			var err error
+			ip, err = defaultDNSResolver.Resolve(addr)
+			if err != nil {
 				continue
 			}
 		}
