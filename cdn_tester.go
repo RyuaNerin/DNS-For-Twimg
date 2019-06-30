@@ -334,7 +334,7 @@ func (ct *CDNTester) filterCdn(host ConfigHost, cdnList map[string]*CdnStatus, s
 
 func (ct *CDNTester) addDefaultCdn(host ConfigHost, cdnList map[string]*CdnStatus) {
 	addr, err := defaultDNSResolver.Resolve(host.Host)
-	if err == nil && addr.String() != "" {
+	if err == nil && addr != nil {
 		cdnList[addr.String()] = &CdnStatus {
 			IP			: addr,
 			DefaultCdn	: true,
@@ -400,7 +400,6 @@ func (ct *CDNTester) addAdditionalCdn(host ConfigHost, cdnList map[string]*CdnSt
 				IP : ip,
 			}
 		}
-
 	}
 }
 
