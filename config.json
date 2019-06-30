@@ -185,8 +185,8 @@
 	},
 	"dns" : {
 		"server_nameserver" : [
-			"1.1.1.1:53",
-			"1.0.0.1:53"
+			"8.8.8.8:53",
+			"8.8.4.4:53"
 		],
 		"server_cache_expire"		: "30m",
 		"server_cache_max_count"	: 100000,
