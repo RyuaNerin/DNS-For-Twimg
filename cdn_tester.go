@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -15,6 +14,7 @@ import (
 	"net/http"
 	//"net/url"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -22,7 +22,9 @@ import (
 
 	"github.com/dustin/go-humanize"
 	//"github.com/garyburd/go-oauth/oauth"
+	"github.com/likexian/whois-go"
 	"github.com/oschwald/geoip2-golang"
+	"github.com/sirupsen/logrus"
 	"github.com/sparrc/go-ping"
 )
 
@@ -32,6 +34,7 @@ type CdnStatus struct {
 	DefaultCdn		bool			`json:"default_cdn"`
 	GeoIP			CdnStatusGeoIP	`json:"geoip"`
 	Domain			string			`json:"domain"`
+	Organization	string			`json:"organization"`
 	Ping			CdnStatusPing	`json:"ping"`
 	PingSuccess		bool
 	HTTP			CdnStatusHTTP	`json:"http"`
@@ -111,7 +114,7 @@ func (ct *CDNTester) loop() {
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
 		time.Sleep(time.Until(nextTime))
 		
-		ct.worker()		
+		ct.worker()
 	}
 }
 
@@ -312,6 +315,10 @@ func (ct *CDNTester) testCdn(w *sync.WaitGroup, host ConfigHost, m CdnStatusColl
 	ct.parallel(host, cdnList, ct.testHTTPTask)
 	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.HTTPSuccess })
 
+	// whois
+	ct.parallel(host, cdnList, ct.getOrganization)
+
+
 	cdnArray := make([]CdnStatus, 0, len(cdnList))
 	for _, r := range cdnList {
 		cdnArray = append(cdnArray, *r)
@@ -471,6 +478,30 @@ func (ct *CDNTester) getDomainTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnS
 			cdn.Domain = names[0]
 			return
 		}
+	}
+}
+
+var regexOrganizations = []*regexp.Regexp {
+	regexp.MustCompile("(?i)descr *: *([^\n]+)"),
+	regexp.MustCompile("(?i)org-name *: *([^\n]+)"),
+	regexp.MustCompile("(?i)Organi[sz]ation *: *([^\n]+)"),
+}
+func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
+	defer w.Done()
+
+	result, err := whois.Whois(cdn.IP.String())
+	if err != nil {
+		return
+	}
+
+	for _, reg := range regexOrganizations {
+		organization := reg.FindStringSubmatch(result)
+		if organization == nil && len(organization) == 0 {
+			continue
+		}
+		
+		cdn.Organization = strings.TrimSpace(organization[1])
+		break
 	}
 }
 
