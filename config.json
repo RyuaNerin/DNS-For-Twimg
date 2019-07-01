@@ -173,7 +173,7 @@
 	},
 	"http" : {
 		"type"			: "tcp",
-		"listen"		: ":8080",
+		"listen"		: "127.0.0.1:8080",
 		"timeout_read"	: "30s",
 		"timeout_write"	: "30s",
 		"timeout_idle"	: "30s",
