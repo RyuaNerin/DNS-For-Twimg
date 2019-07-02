@@ -83,7 +83,7 @@ func (sv *DNSServer) addMsg(host string, qType uint16, rr dns.RR) {
 	}
 	
 	sv.cdnHostQ = append(sv.cdnHostQ, q)
-	sv.cache.Set(q, m)
+	sv.cache.Set(q, m, true)
 }
 
 func (sv *DNSServer) Start() {
@@ -193,7 +193,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 		dns.HandleFailed(w, req)
 
 		// cache the failure, too!
-		if err = sv.negCache.Set(Q, nil); err != nil {
+		if err = sv.negCache.Set(Q, nil, false); err != nil {
 			logrus.WithFields(logrus.Fields {
 				"query" : Q.String(),
 				"error"	: err.Error(),
@@ -205,7 +205,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	w.WriteMsg(mesg)
 
 	if isIPQuery && len(mesg.Answer) > 0 {
-		err = sv.cache.Set(Q, mesg)
+		err = sv.cache.Set(Q, mesg, false)
 		if err != nil {
 			logrus.WithFields(logrus.Fields {
 				"query" : Q.String(),

@@ -39,8 +39,9 @@ type MemoryCache struct {
 }
 
 type Mesg struct {
-	Msg		*dns.Msg
-	Expire	time.Time
+	Msg			*dns.Msg
+	Expire		time.Time
+	NoExpire	bool
 }
 
 type Question struct {
@@ -74,7 +75,7 @@ func (c *MemoryCache) Get(q Question) (*dns.Msg, error) {
 		return nil, KeyNotFound{q}
 	}
 
-	if mesg.Expire.Before(time.Now()) {
+	if !mesg.NoExpire && mesg.Expire.Before(time.Now()) {
 		c.Remove(q)
 		return nil, KeyExpired{q}
 	}
@@ -82,13 +83,13 @@ func (c *MemoryCache) Get(q Question) (*dns.Msg, error) {
 	return mesg.Msg, nil
 }
 
-func (c *MemoryCache) Set(q Question, msg *dns.Msg) error {
+func (c *MemoryCache) Set(q Question, msg *dns.Msg, noExpire bool) error {
 	if c.Full() && !c.Exists(q) {
 		return CacheIsFull{}
 	}
 
 	expire := time.Now().Add(c.Expire)
-	mesg := Mesg{msg, expire}
+	mesg := Mesg{msg, expire, noExpire}
 	c.mu.Lock()
 	c.Backend[q.hash] = mesg
 	c.mu.Unlock()

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -499,6 +500,10 @@ func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *Cd
 	result, err := whois.Whois(cdn.IP.String())
 	if err != nil {
 		return
+	}
+
+	if cdn.IP.Equal(net.ParseIP("104.76.97.12")) {
+		log.Println(result)
 	}
 
 	for _, reg := range regexOrganizations {
