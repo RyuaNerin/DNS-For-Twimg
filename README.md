@@ -34,22 +34,28 @@
 
 ## Installation & Running
 
-1. install libraries
+1. download repository
+	```
+	git clone https://github.com/RyuaNerin/DNS-For-Twimg.git
+	```
+
+2. install libraries
 	```
 	go get github.com/dustin/go-humanize
 	go get github.com/garyburd/go-oauth/oauth
+	go get github.com/likexian/whois-go
 	go get github.com/miekg/dns
 	go get github.com/oschwald/geoip2-golang
 	go get github.com/sirupsen/logrus
 	go get github.com/sparrc/go-ping
 	```
 
-2. build
+3. build
 	```
 	go build
 	```
 
-3. running
+4. running
 	```
 	sudo go run
 	```
