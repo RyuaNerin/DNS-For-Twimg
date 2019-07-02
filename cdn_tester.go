@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -502,18 +501,21 @@ func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *Cd
 		return
 	}
 
-	if cdn.IP.Equal(net.ParseIP("104.76.97.12")) {
-		log.Println(result)
-	}
-
 	for _, reg := range regexOrganizations {
-		organization := reg.FindStringSubmatch(result)
-		if organization == nil && len(organization) == 0 {
+		matches := reg.FindAllStringSubmatch(result, -1)
+		if matches == nil || len(matches) == 0 {
 			continue
 		}
-		
-		cdn.Organization = strings.TrimSpace(organization[1])
-		break
+
+		for _, match := range matches {
+			org := strings.TrimSpace(match[1])
+			if strings.ToUpper(org) == "ARIN" {
+				continue
+			}
+			
+			cdn.Organization = org
+			return
+		}
 	}
 }
 
