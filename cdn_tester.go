@@ -158,6 +158,8 @@ func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
 }
 
 func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
+	stat.AddHTTPReqeust()
+
 	ct.pageLock.RLock()
 	defer ct.pageLock.RUnlock()
 
@@ -171,6 +173,8 @@ func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (ct *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
+	stat.AddJsonReqeust()
+
 	ct.pageLock.RLock()
 	defer ct.pageLock.RUnlock()
 
@@ -354,14 +358,16 @@ func (ct *CDNTester) addDefaultCdn(host ConfigHost, cdnList map[string]*CdnStatu
 func (ct *CDNTester) addCdnListFromThreatCrowd(host ConfigHost, cdnList map[string]*CdnStatus) {
 	hres, err := http.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host.Host)
 	if err != nil {
-		panic(err)
+		logRusPanic.Error(err)
+		return
 	}
 	defer hres.Body.Close()
 
 	var res threatCrowdAPIResult
 	err = json.NewDecoder(hres.Body).Decode(&res)
 	if err != nil {
-		panic(err)
+		logRusPanic.Error(err)
+		return
 	}
 
 	minDate := time.Now().Add(config.Test.ThreatCrowdExpire.Duration * -1)
@@ -448,9 +454,10 @@ func (ct *CDNTester) testPingTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnSt
 }
 
 func (ct *CDNTester) getCountry(host ConfigHost, cdnList map[string]*CdnStatus) {
-    db, err := geoip2.Open(config.Test.GeoIP2Path)
+    db, err := geoip2.Open(config.Path.GeoIP2)
     if err != nil {
-		panic(err)
+		logRusPanic.Error(err)
+		return
     }
 	defer db.Close()
 	
