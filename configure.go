@@ -18,6 +18,7 @@ type Config struct {
 	Test					ConfigTest				`json:"test"`
 	RPC						ConfigRPC				`json:"rpc"`
 	LogLevel				int						`json:"log-level"`
+	Path					ConfigPath				`json:"path"`
 }
 type ConfigHost struct {
 	Host					string					`json:"host"`
@@ -50,7 +51,6 @@ type ConfigDNS struct {
 }
 type ConfigTest struct {
 	RefreshInterval			TimeDuration			`json:"refresh_interval"`
-	LastResultPath			string					`json:"last-result-path"`
 
 	ThreatCrowdExpire		TimeDuration			`json:"threatcrowd_expire"`
 
@@ -61,8 +61,6 @@ type ConfigTest struct {
 	HTTPTimeout				TimeDuration			`json:"http_timeout"`
 	HTTPBufferSize			int						`json:"http_buffersize"`
 
-	GeoIP2Path				string					`json:"geoip2_path"`
-
 	TwitterStatusTemplate	string					`json:"twitter-status-template"`
 	TwitterAppKey			string					`json:"twitter-app-key"`
 	TwitterAppSecret		string					`json:"twitter-app-secret"`
@@ -72,6 +70,12 @@ type ConfigTest struct {
 type ConfigRPC struct {
 	Network					string					`json:"network"`
 	Address					string					`json:"address"`
+}
+type ConfigPath struct {
+	GeoIP2					string					`json:"geoip2"`
+	TestSave				string					`json:"test-save"`
+	StatSave				string					`json:"stat-save"`
+	StatLog					string					`json:"stat-log"`
 }
 
 var config Config

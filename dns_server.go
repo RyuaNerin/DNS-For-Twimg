@@ -145,6 +145,7 @@ func (sv *DNSServer) handle(network string, w dns.ResponseWriter, req *dns.Msg) 
 	} else {
 		remote = w.RemoteAddr().(*net.UDPAddr).IP
 	}
+	stat.AddDNSReqeust(remote)
 
 	logrus.WithFields(logrus.Fields {
 		"remote"	: remote,

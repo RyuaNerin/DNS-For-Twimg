@@ -56,6 +56,7 @@ func main() {
 	cdnTester.Start()
 	dnsServer.Start()
 	httpServer.Start()
+	stat.Start()
 
 	rpc.RegisterName("Remote", new(RPCRemote))
 

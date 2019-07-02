@@ -199,8 +199,6 @@
 
 		"threatcrowd_expire" : "8760h",
 
-		"geoip2_path" : "./GeoLite2-City.mmdb",
-
 		"ping_count"	: 20,
 		"ping_timeout"	: "5s",
 
@@ -208,18 +206,21 @@
 		"http_timeout"		: "30s",
 		"http_buffersize"	: 32768,
 
-		"last-result-path" : "./last-log.json",
-
 		"twitter-status-template"	: "template/tweet-status.txt",
 		"twitter-app-key"			: "",
 		"twitter-app-secret"		: "",
 		"twitter-user-key"			: "",
 		"twitter-user-secret"		: ""
-
 	},
 	"rpc" : {
 		"network" : "tcp",
 		"address" : "127.0.0.1:55430"
 	},
-	"log-level" : 4
+	"log-level" : 4,
+	"path" : {
+		"geoip2"		: "./GeoLite2-City.mmdb",
+		"test-save"		: "./last.json",
+		"stat-save"		: "./stat.addr",
+		"stat-log"		: "./stat.log"
+	}
 }

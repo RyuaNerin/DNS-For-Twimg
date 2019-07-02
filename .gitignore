@@ -12,4 +12,6 @@ bin-*/
 
 bin/
 
-last-log.json
+last.json
+stat.log
+stat.addr

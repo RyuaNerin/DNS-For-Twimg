@@ -119,7 +119,7 @@ func (ct *CDNTester) loop() {
 }
 
 func (ct *CDNTester) loadLastJson() {
-	fs, err := os.Open(config.Test.LastResultPath)
+	fs, err := os.Open(config.Path.TestSave)
 	if os.IsNotExist(err) {
 		return
 	}
@@ -140,7 +140,7 @@ func (ct *CDNTester) loadLastJson() {
 	ct.setCdnResult(cdnTestResult)
 }
 func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
-	fs, err := os.OpenFile(config.Test.LastResultPath, os.O_CREATE | os.O_WRONLY, 644)
+	fs, err := os.OpenFile(config.Path.TestSave, os.O_CREATE | os.O_WRONLY, 644)
 	if err != nil {
 		logRusPanic.Error(err)
 		return
