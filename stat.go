@@ -84,7 +84,15 @@ func (stat *Stat) AddHTTPReqeust() {
 	atomic.AddUint64(&stat.HTTPReqeust, 1)
 }
 
-func (stat *Stat) AddJsonReqeust() {
+func (stat *Stat) AddJsonReqeust(ip net.IP) {
+	if ip != nil {
+		u := uint32(ip[12]) << 24 | uint32(ip[13]) << 16 | uint32(ip[14]) << 8 | uint32(ip[15])
+
+		stat.AddressesLock.Lock()
+		stat.Addresses[u] = struct{}{}
+		stat.AddressesLock.Unlock()
+	}
+
 	atomic.AddUint64(&stat.JsonRequest, 1)
 }
 

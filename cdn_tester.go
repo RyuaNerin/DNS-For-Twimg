@@ -173,7 +173,7 @@ func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (ct *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
-	stat.AddJsonReqeust()
+	stat.AddJsonReqeust(net.ParseIP(r.RemoteAddr))
 
 	ct.pageLock.RLock()
 	defer ct.pageLock.RUnlock()
