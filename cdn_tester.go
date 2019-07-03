@@ -14,7 +14,6 @@ import (
 	"net/http"
 	//"net/url"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -112,9 +111,9 @@ func (ct *CDNTester) loop() {
 	for {
 		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
-		time.Sleep(time.Until(nextTime))
 		
 		ct.worker()
+		time.Sleep(time.Until(nextTime))
 	}
 }
 
@@ -488,11 +487,6 @@ func (ct *CDNTester) getDomainTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnS
 	}
 }
 
-var regexOrganizations = []*regexp.Regexp {
-	regexp.MustCompile("(?i)descr *: *([^\n]+)"),
-	regexp.MustCompile("(?i)org-name *: *([^\n]+)"),
-	regexp.MustCompile("(?i)Organi[sz]ation *: *([^\n]+)"),
-}
 func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
 	defer w.Done()
 
@@ -501,7 +495,7 @@ func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *Cd
 		return
 	}
 
-	for _, reg := range regexOrganizations {
+	for _, reg := range config.DNS.OrganizationRegex {
 		matches := reg.FindAllStringSubmatch(result, -1)
 		if matches == nil || len(matches) == 0 {
 			continue
@@ -509,7 +503,16 @@ func (ct *CDNTester) getOrganization(w *sync.WaitGroup, host ConfigHost, cdn *Cd
 
 		for _, match := range matches {
 			org := strings.TrimSpace(match[1])
-			if strings.ToUpper(org) == "ARIN" {
+
+			pass := false
+			for _, v := range config.DNS.OrganizationIgnore {
+				if strings.EqualFold(org, v) {
+					pass = true
+					break
+				}
+			}
+
+			if pass {
 				continue
 			}
 			

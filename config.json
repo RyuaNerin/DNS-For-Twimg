@@ -192,7 +192,17 @@
 		"server_cache_max_count"	: 100000,
 
 		"dns_lookup_timeout" 	: "5s",
-		"dns_lookup_interval" 	: "200ms"
+		"dns_lookup_interval" 	: "200ms",
+
+		"organization-pattern" : [
+			"(?i)descr *: *([^\n]+)",
+			"(?i)org-name *: *([^\n]+)",
+			"(?i)Organi[sz]ation *: *([^\n]+)"
+		],
+		"organization-ignore" : [
+			"ARIN",
+			"Administered by ARIN"
+		]
 	},
 	"test" : {
 		"refresh_interval" : "15m",

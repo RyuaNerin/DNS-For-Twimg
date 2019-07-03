@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"regexp"
 	"time"
 )
 
@@ -48,6 +49,9 @@ type ConfigDNS struct {
 
 	DNSLookupTimeout		TimeDuration			`json:"dns_lookup_timeout"`
 	DNSLookupInterval		TimeDuration			`json:"dns_lookup_interval"`
+
+	OrganizationRegex		[]ConfigRegex			`json:"organization-pattern"`
+	OrganizationIgnore		[]string				`json:"organization-ignore"`
 }
 type ConfigTest struct {
 	RefreshInterval			TimeDuration			`json:"refresh_interval"`
@@ -112,6 +116,32 @@ func (td *TimeDuration) UnmarshalJSON(b []byte) error {
 	case string:
 		var err error
 		td.Duration, err = time.ParseDuration(value)
+		if err != nil {
+			return err
+		}
+		return nil
+
+	default:
+		return errors.New("invalid")
+	}
+}
+
+type ConfigRegex struct {
+	*regexp.Regexp
+}
+
+func (re *ConfigRegex) MarshalJSON() ([]byte, error) {
+	return json.Marshal(re.Regexp.String())
+}
+func (re *ConfigRegex) UnmarshalJSON(b []byte) (err error) {
+	var v interface{}
+	if err := json.Unmarshal(b, &v); err != nil {
+		return err
+	}
+
+	switch value := v.(type) {
+	case string:
+		re.Regexp, err = regexp.Compile(value)
 		if err != nil {
 			return err
 		}
