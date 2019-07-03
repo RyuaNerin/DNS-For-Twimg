@@ -201,7 +201,8 @@
 		],
 		"organization-ignore" : [
 			"ARIN",
-			"Administered by ARIN"
+			"Administered by ARIN",
+			"IPv4 address block not managed by the RIPE NCC"
 		]
 	},
 	"test" : {
