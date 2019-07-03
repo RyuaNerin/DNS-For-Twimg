@@ -111,9 +111,9 @@ func (ct *CDNTester) loop() {
 	for {
 		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
 		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
+		time.Sleep(time.Until(nextTime))
 		
 		ct.worker()
-		time.Sleep(time.Until(nextTime))
 	}
 }
 
