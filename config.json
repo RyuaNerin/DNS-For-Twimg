@@ -197,15 +197,18 @@
 		"dns_lookup_interval" 	: "200ms",
 
 		"organization-pattern" : [
-			"(?i)descr *: *([^\n]+)",
 			"(?i)org-name *: *([^\n]+)",
-			"(?i)Organi[sz]ation *: *([^\n]+)"
+			"(?i)Organi[sz]ation *: *([^\n]+)",
+			"(?i)netname *: *([^\n]+)",
+			"(?i)descr *: *([^\n]+)"
 		],
 		"organization-ignore" : [
 			"ARIN",
 			"Administered by ARIN",
 			"Administered by RIPE NCC",
-			"IPv4 address block not managed by the RIPE NCC"
+			"IPv4 address block not managed by the RIPE NCC",
+			"NON-RIPE-NCC-MANAGED-ADDRESS-BLOCK",
+			"RIPE NCC"
 		]
 	},
 	"test" : {
