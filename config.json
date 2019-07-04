@@ -198,6 +198,7 @@
 
 		"organization-pattern" : [
 			"(?i)org-name *: *([^\n]+)",
+			"(?i)orgname *: *([^\n]+)",
 			"(?i)Organi[sz]ation *: *([^\n]+)",
 			"(?i)netname *: *([^\n]+)",
 			"(?i)descr *: *([^\n]+)"
