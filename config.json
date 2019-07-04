@@ -181,7 +181,9 @@
 		"template_path"		: "template/index.html",
 		"template_buffer" 	: 32768,
 
-		"www-root" : "./www-root"
+		"www-root" : "./www-root",
+
+		"nginx-header-read-ip" : "X-Real-IP"
 	},
 	"dns" : {
 		"server_nameserver" : [

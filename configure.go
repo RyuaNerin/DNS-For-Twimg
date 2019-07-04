@@ -41,6 +41,8 @@ type ConfigHTTP struct {
 	TemplateBufferSize		int						`json:"template_buffer"`
 
 	WWWRoot					string					`json:"www-root"`
+
+	NginxHeaderReadlIP		string					`json:"nginx-header-read-ip"`
 }
 type ConfigDNS struct {
 	NameServer				[]string				`json:"server_nameserver"`

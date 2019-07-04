@@ -172,8 +172,8 @@ func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func (ct *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
-		stat.AddJsonReqeust(net.ParseIP(host))
+	if readlIP := r.Header.Get(config.HTTP.NginxHeaderReadlIP); readlIP != "" {
+		stat.AddJsonReqeust(net.ParseIP(strings.TrimSpace(readlIP)))
 	}
 
 	ct.pageLock.RLock()
