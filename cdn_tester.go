@@ -22,7 +22,6 @@ import (
 	"github.com/dustin/go-humanize"
 	//"github.com/garyburd/go-oauth/oauth"
 	"github.com/likexian/whois-go"
-	"github.com/oschwald/geoip2-golang"
 	"github.com/sirupsen/logrus"
 	"github.com/sparrc/go-ping"
 )
@@ -92,6 +91,9 @@ type threatCrowdAPIResult struct {
 }
 
 type CDNTester struct {
+	lock			chan struct{}
+	wait			sync.WaitGroup
+
 	pageLock		sync.RWMutex
 	pageIndex		[]byte
 	pageIndexEtag	string
@@ -101,19 +103,41 @@ type CDNTester struct {
 
 var cdnTester CDNTester
 
-func (ct *CDNTester) Start() {
+func (ct *CDNTester) StartOrRestart() {
 	ct.loadLastJson()
 
+	if ct.lock != nil {
+		ct.lock <- struct{}{}
+	} else {
+		ct.lock = make(chan struct{})
+	}
+	
+	ct.wait.Wait()
+	ct.wait.Add(1)
 	go ct.loop()
 }
 
 func (ct *CDNTester) loop() {
+	defer ct.wait.Done()
+
+	waitChan := make(chan struct{})
+	
 	for {
-		nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
-		nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
-		time.Sleep(time.Until(nextTime))
+		go func() {
+			nextTime := time.Now().Truncate(config.Test.RefreshInterval.Duration)
+			nextTime = nextTime.Add(config.Test.RefreshInterval.Duration)
+			time.Sleep(time.Until(nextTime))
+			waitChan <- struct{}{}
+		}()
+
+		select {
+		case <- waitChan:
+		case <- ct.lock:
+			break
+		}
 		
 		ct.worker()
+
 	}
 }
 
@@ -310,15 +334,15 @@ func (ct *CDNTester) testCdn(w *sync.WaitGroup, host ConfigHost, m CdnStatusColl
 	ct.parallel(host, cdnList, ct.testPingTask)
 	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.PingSuccess })
 
-	// country
-	ct.getCountry(host, cdnList)
-
-	// arpa
-	ct.parallel(host, cdnList, ct.getDomainTask)
-
 	// http-speed
 	ct.parallel(host, cdnList, ct.testHTTPTask)
 	ct.filterCdn(host, cdnList, func(cs CdnStatus) bool { return cs.HTTPSuccess })
+
+	// country
+	ct.parallel(host, cdnList, ct.getCountryTask)
+
+	// arpa
+	ct.parallel(host, cdnList, ct.getDomainTask)
 
 	// whois
 	ct.parallel(host, cdnList, ct.getOrganization)
@@ -429,17 +453,23 @@ func (ct *CDNTester) parallel(host ConfigHost, cdnList map[string]*CdnStatus, ta
 }
 
 func (ct *CDNTester) testPingTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
+    defer func() {
+        if err := recover(); err != nil {
+			logRusPanic.Error(err)
+        }
+    }()
 	defer w.Done()
 
 	pinger, err := ping.NewPinger(cdn.IP.String())
 	if err != nil {
 		return
 	}
-	pinger.SetPrivileged(true)
-	
+
 	pinger.Count	= config.Test.PingCount
 	pinger.Debug	= true
 	pinger.Timeout	= config.Test.PingTimeout.Duration
+
+	pinger.SetPrivileged(true)
 	pinger.Run()
 
 	stat := pinger.Statistics()
@@ -454,23 +484,12 @@ func (ct *CDNTester) testPingTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnSt
 	cdn.PingSuccess = stat.PacketsRecv > 0
 }
 
-func (ct *CDNTester) getCountry(host ConfigHost, cdnList map[string]*CdnStatus) {
-    db, err := geoip2.Open(config.Path.GeoIP2)
-    if err != nil {
-		logRusPanic.Error(err)
-		return
-    }
-	defer db.Close()
-	
-	for _, status := range cdnList {
-		city, err := db.City(status.IP)
-		if err != nil {
-			continue
-		}
+func (ct *CDNTester) getCountryTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
+	defer w.Done()
 
-		status.GeoIP.Country	= city.Country.Names["en"]
-		status.GeoIP.City		= city.City.Names["en"]
-	}
+	c := ipLocation.GetRealGeoIP(cdn.IP)
+	cdn.GeoIP.Country	= c.Country
+	cdn.GeoIP.City		= c.City
 }
 
 func (ct *CDNTester) getDomainTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnStatus) {
