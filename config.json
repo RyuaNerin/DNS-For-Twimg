@@ -238,7 +238,8 @@
 	"path" : {
 		"geoip2"		: "./GeoLite2-City.mmdb",
 		"test-save"		: "./last.json",
-		"stat-save"		: "./stat.addr",
+		"stat-save-dns"	: "./stat-dns.addr",
+		"stat-save-api"	: "./stat-api.addr",
 		"stat-log"		: "./stat.log"
 	}
 }

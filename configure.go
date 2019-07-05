@@ -80,7 +80,8 @@ type ConfigRPC struct {
 type ConfigPath struct {
 	GeoIP2					string					`json:"geoip2"`
 	TestSave				string					`json:"test-save"`
-	StatSave				string					`json:"stat-save"`
+	StatSaveDNS				string					`json:"stat-save-dns"`
+	StatSaveAPI				string					`json:"stat-save-api"`
 	StatLog					string					`json:"stat-log"`
 }
 
