@@ -30,6 +30,7 @@ type Stat struct {
 var stat = Stat {
 	AddrDNS : make(map[uint32]struct{}),
 	AddrAPI : make(map[uint32]struct{}),
+	Addr	: make(map[uint32]struct{}),
 }
 
 func (stat *Stat) Load() {
