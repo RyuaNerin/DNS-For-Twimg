@@ -99,9 +99,18 @@ type CDNTester struct {
 	pageIndexEtag	string
 	pageJSON		[]byte
 	pageJSONEtag	string
+
+	httpClient		http.Client
 }
 
-var cdnTester CDNTester
+var cdnTester = CDNTester {
+	httpClient : http.Client {
+		Timeout : config.HTTP.TimeoutIdle.Duration,
+		Transport : &http.Transport {
+			DisableKeepAlives : false,
+		},
+	},
+}
 
 func (ct *CDNTester) StartOrRestart() {
 	ct.loadLastJson()
@@ -381,7 +390,7 @@ func (ct *CDNTester) addDefaultCdn(host ConfigHost, cdnList map[string]*CdnStatu
 }
 
 func (ct *CDNTester) addCdnListFromThreatCrowd(host ConfigHost, cdnList map[string]*CdnStatus) {
-	hres, err := http.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host.Host)
+	hres, err := ct.httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host.Host)
 	if err != nil {
 		logRusPanic.Error(err)
 		return
