@@ -165,7 +165,7 @@ func (stat *Stat) logger() {
 
 		fmt.Fprintf(
 			stat.fs,
-			"[%s - %s] dns: %5d | cache: %5d | neg_cache: %5d || http: %5d | json : %5d | ip : %5d (%5d / %5d\n",
+			"[%s - %s] dns: %5d | cache: %5d | neg_cache: %5d || http: %5d | json : %5d | ip : %5d (%5d / %5d)\n",
 			ltime.Format("2006-01-02 15:04:05"),
 			now.Format("2006-01-02 15:04:05"),
 			dnsServer.cache.Length(),
