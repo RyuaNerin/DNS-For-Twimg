@@ -240,6 +240,7 @@
 		"test-save"		: "./last.json",
 		"stat-save-dns"	: "./stat-dns.addr",
 		"stat-save-api"	: "./stat-api.addr",
-		"stat-log"		: "./stat.log"
+		"stat-log"		: "./stat.log",
+		"cdn-log"		: "./log/%s/%s.log"
 	}
 }

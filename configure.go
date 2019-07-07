@@ -83,6 +83,7 @@ type ConfigPath struct {
 	StatSaveDNS				string					`json:"stat-save-dns"`
 	StatSaveAPI				string					`json:"stat-save-api"`
 	StatLog					string					`json:"stat-log"`
+	CDNLog					string					`json:"cdn-log"`
 }
 
 var config Config

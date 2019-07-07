@@ -14,6 +14,7 @@ import (
 	"net/http"
 	//"net/url"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -272,6 +273,8 @@ func (ct *CDNTester) worker() {
 
 	logrus.Info("cdn - update")
 
+	stime := time.Now()
+
 	var w sync.WaitGroup	
 	for _, host := range config.Host {
 		w.Add(1)
@@ -305,6 +308,7 @@ func (ct *CDNTester) worker() {
 	
 	dnsServer.SetCDN(cdnTestResult)
 	ct.setCdnResult(cdnTestResult)
+	ct.saveLog(stime, cdnTestResult)
 
 	/*
 	oauthClient := oauth.Client {
@@ -626,6 +630,28 @@ func (ct *CDNTester) testHTTPTask(w *sync.WaitGroup, host ConfigHost, cdn *CdnSt
 			if cdn.HTTP.BpsMax < spd {
 				cdn.HTTP.BpsMax = spd
 			}
+		}
+	}
+}
+
+
+func (ct *CDNTester) saveLog(stime time.Time, m CdnStatusCollection) {
+	for host, cdns := range m {
+		for _, cdn := range cdns {
+			path := fmt.Sprintf(config.Path.CDNLog, host, cdn.IP.String())
+
+			if fi, err := os.Stat(filepath.Dir(path)); err != nil || !fi.IsDir() {
+				continue
+			}
+
+			fs, err := os.OpenFile(path, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0600)
+			if err != nil {
+				logRusPanic.Error(err)
+				continue
+			}
+			defer fs.Close()
+
+			fs.WriteString(fmt.Sprintf("%s\t%.2f\t%.2f\n", stime.Format("2006-01-02 15:04:05"), cdn.Ping.RttAvg, cdn.HTTP.BpsAvg))
 		}
 	}
 }
