@@ -639,10 +639,19 @@ func (ct *CDNTester) saveLog(stime time.Time, m CdnStatusCollection) {
 	for host, cdns := range m {
 		for _, cdn := range cdns {
 			path := fmt.Sprintf(config.Path.CDNLog, host, cdn.IP.String())
+			dir := filepath.Dir(path)
 
-			if fi, err := os.Stat(filepath.Dir(path)); err != nil || !fi.IsDir() {
+			fi, err := os.Stat(dir)
+			if os.IsNotExist(err) {
+				err = os.Mkdir(dir, 0700)
+				if err != nil {
+					logRusPanic.Error(err)
+					continue
+				}
+			} else if !fi.IsDir() {
 				continue
 			}
+			
 
 			fs, err := os.OpenFile(path, os.O_APPEND | os.O_CREATE | os.O_WRONLY, 0600)
 			if err != nil {
