@@ -643,7 +643,7 @@ func (ct *CDNTester) saveLog(stime time.Time, m CdnStatusCollection) {
 
 			fi, err := os.Stat(dir)
 			if os.IsNotExist(err) {
-				err = os.Mkdir(dir, 0700)
+				err = os.MkdirAll(dir, 0700)
 				if err != nil {
 					logRusPanic.Error(err)
 					continue
