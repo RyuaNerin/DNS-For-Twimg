@@ -88,6 +88,7 @@ func (sv *DNSServer) addMsg(host string, qType uint16, rr dns.RR) {
 
 func (sv *DNSServer) Start() {
 	sv.dnsTCP = dns.Server {
+		Addr			: "127.0.0.1:50053",
 		Net				: "tcp",
 		Handler			: dns.HandlerFunc(sv.HandleTCP),
 		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
@@ -95,6 +96,7 @@ func (sv *DNSServer) Start() {
 	}
 
 	sv.dnsUDP = dns.Server {
+		Addr			: "127.0.0.1:50053",
 		Net				: "udp",
 		Handler			: dns.HandlerFunc(sv.handleUDP),
 		UDPSize			: 65535,
