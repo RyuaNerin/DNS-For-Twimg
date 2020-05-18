@@ -6,7 +6,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/miekg/dns"
 	"github.com/sirupsen/logrus"
 )
@@ -15,8 +15,7 @@ type dnsResolver struct {
 }
 
 func newDNSResolver() *dnsResolver {
-	return &dnsResolver {
-	}
+	return &dnsResolver{}
 }
 
 var defaultDNSResolver = newDNSResolver()
@@ -25,6 +24,7 @@ type ResolvError struct {
 	qname, net  string
 	nameservers []string
 }
+
 func (e ResolvError) Error() string {
 	return fmt.Sprintf("%s resolv failed on %s (%s)", e.qname, strings.Join(e.nameservers, "; "), e.net)
 }
@@ -34,7 +34,7 @@ func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
 
 	req := new(dns.Msg)
 	req.SetQuestion(host, dns.TypeA)
-	
+
 	msg, err := h.Lookup("udp", req)
 	if err != nil {
 		return nil, err
@@ -54,9 +54,9 @@ func (h *dnsResolver) Resolve(host string) (ip net.IP, err error) {
 // https://github.com/kenshinx/godns/blob/89cf763271800261c0ab38983a27c5b34f34f0a5/resolver.go#L131
 func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error) {
 	c := &dns.Client{
-		Net				: net,
-		ReadTimeout		: config.DNS.DNSLookupTimeout.Duration,
-		WriteTimeout	: config.DNS.DNSLookupTimeout.Duration,
+		Net:          net,
+		ReadTimeout:  config.DNS.DNSLookupTimeout.Duration,
+		WriteTimeout: config.DNS.DNSLookupTimeout.Duration,
 	}
 
 	if net == "udp" {
@@ -76,11 +76,11 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		defer wg.Done()
 		r, rtt, err := c.Exchange(req, nameserver)
 		if err != nil {
-			logrus.WithFields(logrus.Fields {
-				"qname"			: qname,
-				"nameserver"	: nameserver,
-				"err"			: err.Error(),
-				}).Debug("socket error")
+			logrus.WithFields(logrus.Fields{
+				"qname":      qname,
+				"nameserver": nameserver,
+				"err":        err.Error(),
+			}).Debug("socket error")
 			return
 		}
 		// If SERVFAIL happen, should return immediately and try another upstream resolver.
@@ -88,10 +88,10 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		// that it has been verified no such domain existas and ask other resolvers
 		// would make no sense. See more about #20
 		if r != nil && r.Rcode != dns.RcodeSuccess {
-			logrus.WithFields(logrus.Fields {
-				"qname"			: qname,
-				"nameserver"	: nameserver,
-				}).Debug("failed to get an valid answer")
+			logrus.WithFields(logrus.Fields{
+				"qname":      qname,
+				"nameserver": nameserver,
+			}).Debug("failed to get an valid answer")
 
 			if r.Rcode == dns.RcodeServerFailure {
 				return
@@ -115,11 +115,11 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 		// but exit early, if we have an answer
 		select {
 		case re := <-res:
-			logrus.WithFields(logrus.Fields {
-				"qname"			: qname,
-				"nameserver"	: re.nameserver,
-				"rtt"			: re.rtt,
-				}).Debug("host resolved")
+			logrus.WithFields(logrus.Fields{
+				"qname":      qname,
+				"nameserver": re.nameserver,
+				"rtt":        re.rtt,
+			}).Debug("host resolved")
 
 			return re.msg, nil
 		case <-ticker.C:
@@ -130,11 +130,11 @@ func (h *dnsResolver) Lookup(net string, req *dns.Msg) (msg *dns.Msg, err error)
 	wg.Wait()
 	select {
 	case re := <-res:
-		logrus.WithFields(logrus.Fields {
-			"qname"			: qname,
-			"nameserver"	: re.nameserver,
-			"rtt"			: re.rtt,
-			}).Debug("host resolved")
+		logrus.WithFields(logrus.Fields{
+			"qname":      qname,
+			"nameserver": re.nameserver,
+			"rtt":        re.rtt,
+		}).Debug("host resolved")
 
 		return re.msg, nil
 	default:

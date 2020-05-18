@@ -5,13 +5,13 @@ import (
 	"net"
 	"net/rpc"
 	"os"
-	
+
 	"github.com/sirupsen/logrus"
 )
 
 var (
 	flagConfigPath string
-	logRusPanic	*logrus.Logger
+	logRusPanic    *logrus.Logger
 )
 
 type RpcArgs struct{}
@@ -20,9 +20,9 @@ type RpcResult struct{}
 func main() {
 	flag.StringVar(&flagConfigPath, "config", defaultConfigPath, "configure path")
 	flag.Parse()
-	
+
 	loadConfig(flagConfigPath)
-	
+
 	logrus.SetFormatter(new(logrus.TextFormatter))
 	logrus.SetOutput(os.Stdout)
 	logrus.SetLevel(logrus.Level(config.LogLevel))
@@ -66,6 +66,7 @@ func main() {
 }
 
 type RPCRemote byte
+
 func (r *RPCRemote) Reload(arg RpcArgs, reply *RpcResult) error {
 	logrus.Info("reload configure")
 

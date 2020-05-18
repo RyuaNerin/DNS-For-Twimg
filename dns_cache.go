@@ -14,6 +14,7 @@ import (
 type KeyNotFound struct {
 	q Question
 }
+
 func (e KeyNotFound) Error() string {
 	return e.q.hash + " " + "not found"
 }
@@ -21,12 +22,14 @@ func (e KeyNotFound) Error() string {
 type KeyExpired struct {
 	q Question
 }
+
 func (e KeyExpired) Error() string {
 	return e.q.hash + " " + "expired"
 }
 
 type CacheIsFull struct {
 }
+
 func (e CacheIsFull) Error() string {
 	return "Cache is Full"
 }
@@ -39,18 +42,19 @@ type MemoryCache struct {
 }
 
 type Mesg struct {
-	Msg			*dns.Msg
-	Expire		time.Time
-	NoExpire	bool
+	Msg      *dns.Msg
+	Expire   time.Time
+	NoExpire bool
 }
 
 type Question struct {
-	qname  	string
-	qtype  	string
-	qclass	string
-	
-	hash	string
+	qname  string
+	qtype  string
+	qclass string
+
+	hash string
 }
+
 func (q *Question) String() string {
 	return q.qname + " " + q.qclass + " " + q.qtype
 }

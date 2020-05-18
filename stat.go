@@ -11,26 +11,26 @@ import (
 )
 
 type Stat struct {
-	fs				*os.File
+	fs *os.File
 
-	DNSRequest		uint64
-	HTTPReqeust		uint64
-	JsonRequest		uint64
+	DNSRequest  uint64
+	HTTPReqeust uint64
+	JsonRequest uint64
 
-	AddrLock		sync.Mutex
-	Addr			map[uint32]struct{}
+	AddrLock sync.Mutex
+	Addr     map[uint32]struct{}
 
-	AddrDNSLock		sync.Mutex
-	AddrDNS			map[uint32]struct{}
+	AddrDNSLock sync.Mutex
+	AddrDNS     map[uint32]struct{}
 
-	AddrAPILock		sync.Mutex
-	AddrAPI			map[uint32]struct{}
+	AddrAPILock sync.Mutex
+	AddrAPI     map[uint32]struct{}
 }
 
-var stat = Stat {
-	AddrDNS : make(map[uint32]struct{}),
-	AddrAPI : make(map[uint32]struct{}),
-	Addr	: make(map[uint32]struct{}),
+var stat = Stat{
+	AddrDNS: make(map[uint32]struct{}),
+	AddrAPI: make(map[uint32]struct{}),
+	Addr:    make(map[uint32]struct{}),
 }
 
 func (stat *Stat) Load() {
@@ -61,8 +61,8 @@ func (stat *Stat) loadMap(path string, lock *sync.Mutex, addr map[uint32]struct{
 			panic(err)
 		}
 
-		u := uint32(buff[0]) << 24 | uint32(buff[1]) << 16 | uint32(buff[2]) << 8 | uint32(buff[3])
-		
+		u := uint32(buff[0])<<24 | uint32(buff[1])<<16 | uint32(buff[2])<<8 | uint32(buff[3])
+
 		stat.Addr[u] = struct{}{}
 		addr[u] = struct{}{}
 	}
@@ -72,7 +72,7 @@ func (stat *Stat) Save() {
 	stat.saveMap(config.Path.StatSaveAPI, &stat.AddrAPILock, stat.AddrAPI)
 }
 func (stat *Stat) saveMap(path string, lock *sync.Mutex, addr map[uint32]struct{}) {
-	fs, err := os.OpenFile(path, os.O_CREATE | os.O_WRONLY, 644)
+	fs, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 644)
 	if err != nil {
 		logRusPanic.Error(err)
 		return
@@ -86,16 +86,16 @@ func (stat *Stat) saveMap(path string, lock *sync.Mutex, addr map[uint32]struct{
 	for u := range addr {
 		buff[0] = byte((u >> 24) & 0xFF)
 		buff[1] = byte((u >> 16) & 0xFF)
-		buff[2] = byte((u >>  8) & 0xFF)
-		buff[3] = byte((u      ) & 0xFF)
+		buff[2] = byte((u >> 8) & 0xFF)
+		buff[3] = byte((u) & 0xFF)
 		fs.Write(buff)
 	}
 }
 
 func (stat *Stat) AddDNSReqeust(ip net.IP) {
 	atomic.AddUint64(&stat.DNSRequest, 1)
-	
-	u := uint32(ip[12]) << 24 | uint32(ip[13]) << 16 | uint32(ip[14]) << 8 | uint32(ip[15])
+
+	u := uint32(ip[12])<<24 | uint32(ip[13])<<16 | uint32(ip[14])<<8 | uint32(ip[15])
 
 	stat.AddrDNSLock.Lock()
 	stat.AddrDNS[u] = struct{}{}
@@ -112,7 +112,7 @@ func (stat *Stat) AddHTTPReqeust() {
 
 func (stat *Stat) AddJsonReqeust(ip net.IP) {
 	if ip != nil {
-		u := uint32(ip[12]) << 24 | uint32(ip[13]) << 16 | uint32(ip[14]) << 8 | uint32(ip[15])
+		u := uint32(ip[12])<<24 | uint32(ip[13])<<16 | uint32(ip[14])<<8 | uint32(ip[15])
 
 		stat.AddrAPILock.Lock()
 		stat.AddrAPI[u] = struct{}{}
@@ -128,8 +128,8 @@ func (stat *Stat) AddJsonReqeust(ip net.IP) {
 
 func (stat *Stat) Start() {
 	stat.Load()
-	
-	fs, err := os.OpenFile(config.Path.StatLog, os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0600)
+
+	fs, err := os.OpenFile(config.Path.StatLog, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}
@@ -146,17 +146,17 @@ func (stat *Stat) logger() {
 
 		now := time.Now()
 
-		reqDNS	:= atomic.SwapUint64(&stat.DNSRequest	, 0)
-		reqHTTP	:= atomic.SwapUint64(&stat.HTTPReqeust	, 0)
-		reqJson := atomic.SwapUint64(&stat.JsonRequest	, 0)
+		reqDNS := atomic.SwapUint64(&stat.DNSRequest, 0)
+		reqHTTP := atomic.SwapUint64(&stat.HTTPReqeust, 0)
+		reqJson := atomic.SwapUint64(&stat.JsonRequest, 0)
 
 		stat.AddrLock.Lock()
 		stat.AddrDNSLock.Lock()
 		stat.AddrAPILock.Lock()
 
-		reqUsers	:= len(stat.Addr)
-		reqDnsUsers	:= len(stat.AddrDNS)
-		reqApiUsers	:= len(stat.AddrAPI)
+		reqUsers := len(stat.Addr)
+		reqDnsUsers := len(stat.AddrDNS)
+		reqApiUsers := len(stat.AddrAPI)
 
 		stat.Save()
 

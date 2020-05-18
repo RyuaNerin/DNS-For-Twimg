@@ -10,24 +10,24 @@ import (
 )
 
 type IPLocationResolver struct {
-	lock				sync.RWMutex
-	geoip2				*geoip2.Reader
-	countryCache		map[string]*IPLocationCache
-	countryCacheLock	sync.Mutex
+	lock             sync.RWMutex
+	geoip2           *geoip2.Reader
+	countryCache     map[string]*IPLocationCache
+	countryCacheLock sync.Mutex
 }
 
 type IPLocation struct {
-	Country				string
-	City				string
+	Country string
+	City    string
 }
 type IPLocationCache struct {
-	Lock				sync.Mutex
-	IP					net.IP
-	Location			IPLocation
+	Lock     sync.Mutex
+	IP       net.IP
+	Location IPLocation
 }
 
-var ipLocation = IPLocationResolver {
-	countryCache : make(map[string]*IPLocationCache),
+var ipLocation = IPLocationResolver{
+	countryCache: make(map[string]*IPLocationCache),
 }
 
 func (ir *IPLocationResolver) Open() {
@@ -42,8 +42,8 @@ func (ir *IPLocationResolver) Open() {
 		}
 	}
 
-    db, err := geoip2.Open(config.Path.GeoIP2)
-    if err != nil {
+	db, err := geoip2.Open(config.Path.GeoIP2)
+	if err != nil {
 		logRusPanic.Error(err)
 		return
 	}
@@ -63,8 +63,8 @@ func (ir *IPLocationResolver) GetRealGeoIP(ip net.IP) IPLocation {
 		cache.Lock.Unlock()
 		return cache.Location
 	} else {
-		cache = &IPLocationCache {
-			IP : ip,
+		cache = &IPLocationCache{
+			IP: ip,
 		}
 		cache.Lock.Lock()
 
@@ -74,7 +74,7 @@ func (ir *IPLocationResolver) GetRealGeoIP(ip net.IP) IPLocation {
 
 	defer cache.Lock.Unlock()
 
-	traceData := traceroute.Exec(ip, 2 * time.Second, 1, 30, "icmp", 0)
+	traceData := traceroute.Exec(ip, 2*time.Second, 1, 30, "icmp", 0)
 
 	err := traceData.All()
 	if err != nil {
@@ -89,7 +89,7 @@ func (ir *IPLocationResolver) GetRealGeoIP(ip net.IP) IPLocation {
 			}
 		}
 
-		if ir.getGeoIP(cache, hops[len(hops) - 1].AddrIP) {
+		if ir.getGeoIP(cache, hops[len(hops)-1].AddrIP) {
 			return cache.Location
 		}
 	}
@@ -103,8 +103,8 @@ func (ir *IPLocationResolver) getGeoIP(cache *IPLocationCache, ip net.IP) (ok bo
 	}
 
 	if geoCountry.Country.Names["en"] != "" {
-		cache.Location.Country	= geoCountry.Country.Names["en"]
-		cache.Location.City		= geoCountry.City.Names["en"]
+		cache.Location.Country = geoCountry.Country.Names["en"]
+		cache.Location.City = geoCountry.City.Names["en"]
 
 		ok = true
 		return

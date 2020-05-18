@@ -1,9 +1,9 @@
 package main
 
 import (
-    "unsafe"
+	"unsafe"
 )
 
 func s2b(s string) []byte {
-    return *(*[]byte)(unsafe.Pointer(&s))
+	return *(*[]byte)(unsafe.Pointer(&s))
 }
