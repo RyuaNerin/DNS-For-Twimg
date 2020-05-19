@@ -181,11 +181,15 @@
 		"template_path"		: "template/index.html",
 		"template_buffer" 	: 32768,
 
-		"www-root" : "./www-root",
-
 		"nginx-header-read-ip" : "X-Real-IP"
 	},
 	"dns" : {
+		"zone_file" : "./zone",
+
+		"rndc_host" : "127.0.0.1:953",
+		"rndc_algo" : "hmac-sha256",
+		"rndc_secret" : "CmuoHe2SYxT5Wt28M8MJ8DVWzm7EVp1KzloeKShShec=",
+
 		"server_nameserver" : [
 			"1.1.1.1:53",
 			"1.0.0.1:53"

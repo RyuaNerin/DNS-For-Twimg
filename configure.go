@@ -40,14 +40,12 @@ type ConfigHTTP struct {
 	TemplatePath       string `json:"template_path"`
 	TemplateBufferSize int    `json:"template_buffer"`
 
-	WWWRoot string `json:"www-root"`
-
 	NginxHeaderReadlIP string `json:"nginx-header-read-ip"`
 }
 type ConfigDNS struct {
-	NameServer          []string     `json:"server_nameserver"`
-	ServerCacheExpire   TimeDuration `json:"server_cache_expire"`
-	ServerCacheMaxCount int          `json:"server_cache_max_count"`
+	ZoneFile string `json:"zone_file"`
+
+	NameServer []string `json:"server_nameserver"`
 
 	DNSLookupTimeout  TimeDuration `json:"dns_lookup_timeout"`
 	DNSLookupInterval TimeDuration `json:"dns_lookup_interval"`

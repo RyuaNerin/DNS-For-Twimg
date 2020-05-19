@@ -11,7 +11,7 @@
 3. 이 DNS 는 한국에서 `pbs.twimg.com` 의 cdn 으로 알려진 서버를 검사하여, 최적의 cdn 을 지정해줍니다.
 
 - 이 라이브러리는 GeoLite2 를 사용중입니다.
-	- `GeoLite2-City_20190611`
+    - `GeoLite2-City_20190611`
 
 - 이 프로젝트의 DNS 서버 구현부분은 [kenshinx/godns](https://github.com/kenshinx/godns) 를 참조하여 만들었습니다.
 
@@ -22,43 +22,33 @@
 - **아래 주소는 확정된 사항이 아니며 언제든 바뀔 수 있습니다.**
 
 - DNS 설정에 아래 IP 를 제일 상단으로 입력합니다
-  - `14.33.182.87`
+    - `141.164.49.73`
 
 - 웹에서 최적의 CDN 정보를 확인할 수 있습니다
-
-  - [https://twimg.ryuar.in/](https://twimg.ryuar.in/)
+    - [https://twimg.ryuar.in/](https://twimg.ryuar.in/)
 
 - 타 앱이나 서비스에서도 본 서버의 자세한 측정 결과를 얻어올 수 있습니다
-
-  - [https://twimg.ryuar.in/json](https://twimg.ryuar.in//json)
+    - [https://twimg.ryuar.in/json](https://twimg.ryuar.in/json)
 
 ## Installation & Running
 
-1. download repository
-	```
-	git clone https://github.com/RyuaNerin/DNS-For-Twimg.git
-	```
+1. 이 레포지토리를 복사합니다.
 
-2. install libraries
-	```
-	go get github.com/dustin/go-humanize
-	go get github.com/garyburd/go-oauth/oauth
-	go get github.com/likexian/whois-go
-	go get github.com/miekg/dns
-	go get github.com/oschwald/geoip2-golang
-	go get github.com/sirupsen/logrus
-	go get github.com/sparrc/go-ping
-	```
+    ```shell
+    git clone https://github.com/RyuaNerin/DNS-For-Twimg.git
+    ```
 
-3. build
-	```
-	go build
-	```
+2. build
 
-4. running
-	```
-	sudo go run
-	```
+    ```shell
+    go build
+    ```
+
+3. running
+
+    ```shell
+    sudo go run
+    ```
 
 ## TODO
 

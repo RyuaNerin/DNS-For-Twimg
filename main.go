@@ -56,7 +56,6 @@ func main() {
 	ipLocation.Open()
 
 	cdnTester.StartOrRestart()
-	dnsServer.Start()
 	httpServer.Start()
 	stat.Start()
 
@@ -76,7 +75,6 @@ func (r *RPCRemote) Reload(arg RpcArgs, reply *RpcResult) error {
 
 	cdnTester.StartOrRestart()
 	httpServer.Restart()
-	dnsServer.Restart()
 
 	return nil
 }

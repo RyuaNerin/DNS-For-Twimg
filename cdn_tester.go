@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
@@ -13,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -173,7 +175,6 @@ func (ct *CDNTester) loadLastJson() {
 		return
 	}
 
-	dnsServer.SetCDN(cdnTestResult)
 	ct.setCdnResult(cdnTestResult)
 }
 func (ct *CDNTester) saveLastJson(cdnTestResult CdnStatusCollection) {
@@ -211,7 +212,7 @@ func (ct *CDNTester) httpIndexHandler(w http.ResponseWriter, r *http.Request) {
 }
 func (ct *CDNTester) httpJSONHandler(w http.ResponseWriter, r *http.Request) {
 	if readlIP := r.Header.Get(config.HTTP.NginxHeaderReadlIP); readlIP != "" {
-		stat.AddJsonReqeust(net.ParseIP(strings.TrimSpace(readlIP)))
+		stat.AddJsonReqeust()
 	}
 
 	ct.pageLock.RLock()
@@ -238,6 +239,8 @@ func (ct *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
 	defer ct.pageLock.Unlock()
 
 	ct.saveLastJson(cdnTestResult)
+
+	ct.saveZone(cdnTestResult)
 
 	data := TemplateData{
 		UpdatedAt: time.Now().Format("2006-01-02 15:04 (-0700 MST)"),
@@ -269,6 +272,58 @@ func (ct *CDNTester) setCdnResult(cdnTestResult CdnStatusCollection) {
 			ct.pageJSON = buff.Bytes()
 			ct.pageJSONEtag = fmt.Sprintf(`"%s"`, hex.EncodeToString(fnv.New64().Sum(ct.pageJSON)))
 		}
+	}
+}
+
+func (ct *CDNTester) saveZone(cdnTestResult CdnStatusCollection) {
+	fs, err := os.OpenFile(config.DNS.ZoneFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
+	if err != nil {
+		return
+	}
+	defer fs.Close()
+
+	bw := bufio.NewWriter(fs)
+
+	/**
+	$TTL 15m
+
+	@       IN      SOA localhost. root.localhost. (
+		2020051907      ; Serial
+		15m              ; Refresh
+		15m             ; Retry
+		15m              ; Expire
+		5m );           ; Negative Cache TTL
+	@       IN      NS      ns1.vultr.com.
+	@       IN      NS      ns2.vultr.com.
+
+	;@ IN CNAME ryuar.in.
+	pbs.twimg.com           A       104.76.97.12
+	video.twimg.com         A       104.76.97.13
+	*/
+
+	fmt.Fprintln(bw, "$TTL 15m")
+	fmt.Fprintln(bw, "@       IN      SOA localhost. root.localhost. (")
+	fmt.Fprintln(bw, time.Now().Unix())
+	fmt.Fprintln(bw, "15m             ; Refresh")
+	fmt.Fprintln(bw, "15m             ; Retry")
+	fmt.Fprintln(bw, "15m             ; Expire")
+	fmt.Fprintln(bw, "5m );           ; Negative Cache TTL")
+	fmt.Fprintln(bw, "@       IN      NS      ns1.vultr.com.")
+	fmt.Fprintln(bw, "@       IN      NS      ns2.vultr.com.")
+
+	fmt.Fprintln(bw, ";@ IN CNAME ryuar.in.")
+
+	for host, cdn := range cdnTestResult {
+		fmt.Fprintln(bw, host, "A", cdn[0].IP.String())
+	}
+
+	bw.Flush()
+	fs.Close()
+
+	cmd := exec.Command("rndc", "reload")
+	err = cmd.Start()
+	if err != nil {
+		cmd.Wait()
 	}
 }
 
@@ -310,7 +365,6 @@ func (ct *CDNTester) worker() {
 		return
 	}
 
-	dnsServer.SetCDN(cdnTestResult)
 	ct.setCdnResult(cdnTestResult)
 	ct.saveLog(stime, cdnTestResult)
 
