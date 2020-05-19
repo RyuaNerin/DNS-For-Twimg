@@ -320,9 +320,39 @@ func (ct *CDNTester) saveZone(cdnTestResult CdnStatusCollection) {
 	bw.Flush()
 	fs.Close()
 
+	b := bytes.NewBuffer(nil)
+
 	cmd := exec.Command("rndc", "reload")
 	err = cmd.Start()
 	if err != nil {
+		rc, err := cmd.StdoutPipe()
+		if err != nil {
+			go func() {
+				b.Reset()
+				_, err = io.Copy(b, rc)
+				if err == nil || err == io.EOF {
+					fmt.Println(b.String())
+				}
+			}()
+		}
+
+		cmd.Wait()
+	}
+
+	cmd = exec.Command("rndc", "flush", "dynamic")
+	err = cmd.Start()
+	if err != nil {
+		rc, err := cmd.StdoutPipe()
+		if err != nil {
+			go func() {
+				b.Reset()
+				_, err = io.Copy(b, rc)
+				if err == nil || err == io.EOF {
+					fmt.Println(b.String())
+				}
+			}()
+		}
+
 		cmd.Wait()
 	}
 }
