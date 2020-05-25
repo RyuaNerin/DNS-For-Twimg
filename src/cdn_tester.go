@@ -23,13 +23,16 @@ import (
 )
 
 var (
-	httpClient = http.Client{
+	httpClient2 = http.Client{
 		Transport: &http2.Transport{
 			AllowHTTP: true,
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
 			},
 		},
+	}
+	httpClient = http.Client{
+		Transport: &http.Transport{},
 	}
 )
 
@@ -102,9 +105,12 @@ func (ct *cdnTest) do() {
 }
 
 func (ct *cdnTest) getPublicDNSServerList(url string) {
-	r, err := httpClient.Get(url)
+	r, err := httpClient2.Get(url)
 	if err != nil {
-		return
+		r, err = httpClient.Get(url)
+		if err != nil {
+			return
+		}
 	}
 
 	var dnsList []struct {
@@ -285,9 +291,12 @@ func (td *cdnTestHostData) getCdnAddrFromNameServer(host string) {
 }
 
 func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
-	res, err := httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
+	res, err := httpClient2.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
 	if err != nil {
-		return
+		res, err = httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
+		if err != nil {
+			return
+		}
 	}
 	defer res.Body.Close()
 
