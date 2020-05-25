@@ -3,6 +3,7 @@ package src
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/binary"
 	"io"
 	"log"
@@ -18,11 +19,17 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
 	"github.com/sparrc/go-ping"
+	"golang.org/x/net/http2"
 )
 
 var (
 	httpClient = http.Client{
-		Transport: &http.Transport{},
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		},
 	}
 )
 
@@ -388,7 +395,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		var tSum float64 = 0
 		count := 0
 
-		tr := client.Transport.(*http.Transport)
+		tr := client.Transport.(*http2.Transport)
 
 		var downloaded uint64 = 0
 
@@ -413,13 +420,12 @@ func (td *cdnTestHostData) httpSpeedTest() {
 					break
 				}
 
-				tr.Dial = func(network, addr string) (net.Conn, error) {
+				tr.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 					_, port, err := net.SplitHostPort(addr)
 					if err != nil {
 						return nil, err
 					}
-
-					return net.Dial(network, net.JoinHostPort(cdnData.addr, port))
+					return tls.Dial(network, net.JoinHostPort(cdnData.addr, port), cfg)
 				}
 
 				req, err := http.NewRequest("GET", d.url, nil)
@@ -485,8 +491,13 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			defer w.Done()
 
 			client := http.Client{
-				Transport: &http.Transport{},
-				Timeout:   config.Test.HttpTimeout,
+				Transport: &http2.Transport{
+					AllowHTTP: true,
+					TLSClientConfig: &tls.Config{
+						MinVersion: tls.VersionTLS12,
+					},
+				},
+				Timeout: config.Test.HttpTimeout,
 			}
 
 			for cdnData := range chCdnData {

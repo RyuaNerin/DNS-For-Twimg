@@ -14,6 +14,8 @@ import (
 )
 
 func startHttpServer() net.Listener {
+	gin.SetMode(gin.ReleaseMode)
+
 	router := gin.New()
 
 	router.Use(handlePanic)
