@@ -90,9 +90,9 @@ func (ct *cdnTest) do() {
 		config.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
 		td.do()
 
-		log.Printf("[%s] Best    : %15s / ping : %5.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
-		log.Printf("[%s] Cache   : %15s / ping : %5.2f ms / http : %7s/s\n", host, td.result.Cache.Addr, td.result.Cache.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Cache.Speed)))
-		log.Printf("[%s] Default : %15s / ping : %5.2f ms / http : %7s/s\n", host, td.result.Default.Addr, td.result.Default.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Default.Speed)))
+		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
+		log.Printf("[%s] Cache   : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Cache.Addr, td.result.Cache.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Cache.Speed)))
+		log.Printf("[%s] Default : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Default.Addr, td.result.Default.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Default.Speed)))
 
 		result[host] = td.result
 	}
