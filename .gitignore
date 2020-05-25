@@ -20,3 +20,7 @@ stat-dns.addr
 DNS-For-Twimg
 
 log/
+
+__debug_bin
+
+twimg.com.zone
