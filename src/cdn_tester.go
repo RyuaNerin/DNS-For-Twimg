@@ -419,6 +419,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				if downloaded >= config.Test.HttpSpeedSize {
 					break
 				}
+				h.Reset()
 
 				tr.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
 					_, port, err := net.SplitHostPort(addr)
@@ -434,21 +435,21 @@ func (td *cdnTestHostData) httpSpeedTest() {
 					return 0
 				}
 
+				startTime := time.Now()
 				res, err := client.Do(req)
 				if err != nil {
 					//logV.Printf("[%s] http abort : %15s = err\n", td.host, cdnData.addr)
+					res.Body.Close()
 					return 0
 				}
 
-				h.Reset()
-
-				startTime := time.Now()
 				wt, err := io.Copy(h, res.Body)
+				res.Body.Close()
+
 				dt := time.Now().Sub(startTime).Seconds()
 
 				if err != nil && err != io.EOF {
 					//logV.Printf("[%s] http abort : %15s = timeout\n", td.host, cdnData.addr)
-					res.Body.Close()
 					return 0
 				}
 
