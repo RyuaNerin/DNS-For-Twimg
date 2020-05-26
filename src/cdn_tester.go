@@ -3,7 +3,6 @@ package src
 import (
 	"bytes"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/binary"
 	"io"
 	"log"
@@ -19,18 +18,9 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
 	"github.com/sparrc/go-ping"
-	"golang.org/x/net/http2"
 )
 
 var (
-	httpClient2 = http.Client{
-		Transport: &http2.Transport{
-			AllowHTTP: true,
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}
 	httpClient = http.Client{
 		Transport: &http.Transport{},
 	}
@@ -105,12 +95,9 @@ func (ct *cdnTest) do() {
 }
 
 func (ct *cdnTest) getPublicDNSServerList(url string) {
-	r, err := httpClient2.Get(url)
+	r, err := httpClient.Get(url)
 	if err != nil {
-		r, err = httpClient.Get(url)
-		if err != nil {
-			return
-		}
+		return
 	}
 
 	var dnsList []struct {
@@ -291,12 +278,9 @@ func (td *cdnTestHostData) getCdnAddrFromNameServer(host string) {
 }
 
 func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
-	res, err := httpClient2.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
+	res, err := httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
 	if err != nil {
-		res, err = httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
-		if err != nil {
-			return
-		}
+		return
 	}
 	defer res.Body.Close()
 
@@ -404,7 +388,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		var tSum float64 = 0
 		count := 0
 
-		tr := client.Transport.(*http2.Transport)
+		tr := client.Transport.(*http.Transport)
 
 		var downloaded uint64 = 0
 
@@ -430,12 +414,12 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				}
 				h.Reset()
 
-				tr.DialTLS = func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				tr.Dial = func(network, addr string) (net.Conn, error) {
 					_, port, err := net.SplitHostPort(addr)
 					if err != nil {
 						return nil, err
 					}
-					return tls.Dial(network, net.JoinHostPort(cdnData.addr, port), cfg)
+					return net.Dial(network, net.JoinHostPort(cdnData.addr, port))
 				}
 
 				req, err := http.NewRequest("GET", d.url, nil)
@@ -448,7 +432,9 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				res, err := client.Do(req)
 				if err != nil {
 					//logV.Printf("[%s] http abort : %15s = err\n", td.host, cdnData.addr)
-					res.Body.Close()
+					if res != nil && res.Body != nil {
+						res.Body.Close()
+					}
 					return 0
 				}
 
@@ -501,13 +487,8 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			defer w.Done()
 
 			client := http.Client{
-				Transport: &http2.Transport{
-					AllowHTTP: true,
-					TLSClientConfig: &tls.Config{
-						MinVersion: tls.VersionTLS12,
-					},
-				},
-				Timeout: config.Test.HttpTimeout,
+				Transport: &http.Transport{},
+				Timeout:   config.Test.HttpTimeout,
 			}
 
 			for cdnData := range chCdnData {
