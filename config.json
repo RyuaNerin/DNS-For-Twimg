@@ -2,21 +2,15 @@
 	"http":{
 		"server" : {
 			"listen_type": "tcp",
-			"listen": "127.0.0.1:45700",
-			
-			"timeout" : {
-				"timeout" : "30s",
-				"read_timeout" : "30s",
-				"write_timeout" : "30s",
-				"dial_timeout" : "5s"
-			}
+			"listen": "127.0.0.1:45700"
 		},
 		"client" : {
 			"timeout" : {
 				"timeout" : "30s",
-				"read_timeout" : "30s",
-				"write_timeout" : "30s",
-				"dial_timeout" : "5s"
+				"idle_conn_timeout" : "30s",
+				"expect_continue_timeout" : "30s",
+				"response_header_timeout" : "5s",
+				"tls_handshake_timeout" : "5s"
 			}
 		}
 	},

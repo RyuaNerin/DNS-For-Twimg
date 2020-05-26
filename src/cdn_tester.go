@@ -3,8 +3,12 @@ package src
 import (
 	"bytes"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/binary"
+	"encoding/pem"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -22,14 +26,36 @@ import (
 	"github.com/sparrc/go-ping"
 )
 
+const (
+	cacheCAPath = "./twimg.crt"
+)
+
 var (
+	tlsConfig tls.Config
+
 	httpClient = http.Client{
-		Transport: &http.Transport{},
+		Transport: &http.Transport{
+			TLSClientConfig:   &tlsConfig,
+			DisableKeepAlives: true,
+		},
 	}
 )
 
 func init() {
-	cfg.V.HTTP.Client.Timeout.SetHttpClient(&httpClient)
+	cfg.V.HTTP.Client.Timeout.Set(&httpClient)
+
+	pemData, err := ioutil.ReadFile(cacheCAPath)
+	if err != nil && err != io.EOF {
+		panic(err)
+	}
+	p, _ := pem.Decode(pemData)
+	cert, err := x509.ParseCertificate(p.Bytes)
+	if err != nil {
+		panic(err)
+	}
+
+	tlsConfig.RootCAs = x509.NewCertPool()
+	tlsConfig.RootCAs.AddCert(cert)
 
 	go func() {
 		waitChan := make(chan struct{}, 1)
@@ -86,7 +112,6 @@ func (ct *cdnTest) do() {
 			hostInfo:     hostInfo,
 			hostTestData: cfg.V.Test.TestFile[host],
 		}
-		cfg.V.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
 		td.do()
 
 		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
@@ -160,7 +185,7 @@ func (td *cdnTestHostData) do() {
 	td.dnsClient = dns.Client{
 		Net: "udp",
 	}
-	cfg.V.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
+	cfg.V.DNS.Client.Timeout.Set(&td.dnsClient)
 
 	//////////////////////////////////////////////////
 
@@ -492,10 +517,8 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		go func() {
 			defer w.Done()
 
-			client := http.Client{
-				Transport: &http.Transport{},
-			}
-			cfg.V.HTTP.Client.Timeout.SetHttpClient(&client)
+			var client http.Client
+			cfg.V.HTTP.Client.Timeout.Set(&client)
 
 			for cdnData := range chCdnData {
 				cdnData.httpAve = Tf(&client, cdnData)

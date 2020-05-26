@@ -19,18 +19,18 @@ const (
 var V struct {
 	HTTP struct {
 		Server struct {
-			ListenType string  `json:"listen_type"`
-			Listen     string  `json:"listen"`
-			Timeout    Timeout `json:"timeout"`
+			ListenType string      `json:"listen_type"`
+			Listen     string      `json:"listen"`
+			Timeout    HttpTimeout `json:"timeout"`
 		}
 		Client struct {
-			Timeout Timeout `json:"timeout"`
+			Timeout HttpTimeout `json:"timeout"`
 		}
 	}
 	DNS struct {
 		Client struct {
 			LookupInterval time.Duration `json:"lookup_interval"`
-			Timeout        Timeout       `json:"client"`
+			Timeout        DnsTimeout    `json:"client"`
 		} `json:"client"`
 
 		NameServerDefault []string            `json:"nameserver_default"`
@@ -71,22 +71,36 @@ type HostInfo struct {
 	HostCache string   `json:"host_cache"`
 }
 
-type Timeout struct {
+type DnsTimeout struct {
 	Timeout      time.Duration `json:"timeout"`
 	ReadTimeout  time.Duration `json:"read_timeout"`
 	WriteTimeout time.Duration `json:"write_timeout"`
 	DialTimeout  time.Duration `json:"dial_timeout"`
 }
 
-func (t Timeout) SetDnsClinet(c *dns.Client) {
+func (t DnsTimeout) Set(c *dns.Client) {
 	c.Timeout = t.Timeout
 	c.ReadTimeout = t.ReadTimeout
 	c.WriteTimeout = t.WriteTimeout
 	c.DialTimeout = t.DialTimeout
 }
 
-func (t Timeout) SetHttpClient(c *http.Client) {
+type HttpTimeout struct {
+	Timeout               time.Duration `json:"timeout"`
+	IdleConnTimeout       time.Duration `json:"idle_conn_timeout"`
+	ExpectContinueTimeout time.Duration `json:"expect_continue_timeout"`
+	ResponseHeaderTimeout time.Duration `json:"response_header_timeout"`
+	TLSHandshakeTimeout   time.Duration `json:"tls_handshake_timeout"`
+}
+
+func (t HttpTimeout) Set(c *http.Client) {
 	c.Timeout = t.Timeout
+	c.Transport = &http.Transport{
+		IdleConnTimeout:       t.IdleConnTimeout,
+		ExpectContinueTimeout: t.ExpectContinueTimeout,
+		ResponseHeaderTimeout: t.ResponseHeaderTimeout,
+		TLSHandshakeTimeout:   t.TLSHandshakeTimeout,
+	}
 }
 
 func init() {
