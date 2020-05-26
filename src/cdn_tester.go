@@ -14,6 +14,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"twimgdns/src/cfg"
+
 	"github.com/dustin/go-humanize"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
@@ -26,23 +28,27 @@ var (
 	}
 )
 
+func init() {
+	cfg.V.HTTP.Client.Timeout.SetHttpClient(&httpClient)
+
+	go func() {
+		waitChan := make(chan struct{}, 1)
+		waitChan <- struct{}{}
+
+		for {
+			var ct cdnTest
+			ct.do()
+
+			<-time.After(time.Until(time.Now().Truncate(cfg.V.Test.RefreshInterval).Add(cfg.V.Test.RefreshInterval)))
+		}
+	}()
+}
+
 func ip2int(ip net.IP) uint32 {
 	if len(ip) == net.IPv4len {
 		binary.BigEndian.Uint32(ip)
 	}
 	return binary.BigEndian.Uint32(ip[len(ip)-4:])
-}
-
-func testCdnWorker() {
-	waitChan := make(chan struct{}, 1)
-	waitChan <- struct{}{}
-
-	for {
-		var ct cdnTest
-		ct.do()
-
-		<-time.After(time.Until(time.Now().Truncate(config.Test.RefreshInterval).Add(config.Test.RefreshInterval)))
-	}
 }
 
 type cdnTest struct {
@@ -55,7 +61,7 @@ func (ct *cdnTest) do() {
 
 	result := make(testResultV2, 2)
 
-	for _, namerserverList := range config.DNS.NameServer {
+	for _, namerserverList := range cfg.V.DNS.NameServer {
 		l := make([]string, 0, len(namerserverList))
 
 		for _, nameserver := range namerserverList {
@@ -73,14 +79,14 @@ func (ct *cdnTest) do() {
 
 	logV.Printf("nameserver Count : %d\n", len(ct.nameServer))
 
-	for host, hostInfo := range config.Test.Host {
+	for host, hostInfo := range cfg.V.Test.Host {
 		td := cdnTestHostData{
 			p:            ct,
 			host:         host,
 			hostInfo:     hostInfo,
-			hostTestData: config.Test.TestFile[host],
+			hostTestData: cfg.V.Test.TestFile[host],
 		}
-		config.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
+		cfg.V.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
 		td.do()
 
 		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
@@ -125,8 +131,8 @@ type cdnTestHostData struct {
 	p *cdnTest
 
 	host         string
-	hostInfo     *HostInfo
-	hostTestData TestDataMap
+	hostInfo     *cfg.HostInfo
+	hostTestData cfg.TestDataMap
 
 	dnsClient dns.Client
 
@@ -154,22 +160,22 @@ func (td *cdnTestHostData) do() {
 	td.dnsClient = dns.Client{
 		Net: "udp",
 	}
-	config.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
+	cfg.V.DNS.Client.Timeout.SetDnsClinet(&td.dnsClient)
 
 	//////////////////////////////////////////////////
 
-	if ip, _ := resolve(&td.dnsClient, config.DNS.NameServerDefault, td.host); ip != nil {
+	if ip, _ := resolve(&td.dnsClient, cfg.V.DNS.NameServerDefault, td.host); ip != nil {
 		td.cdnAddrList[ip2int(ip)] = &cdnTestHostDataResult{
 			addr:       ip.String(),
-			nameServer: config.DNS.NameServerDefault,
+			nameServer: cfg.V.DNS.NameServerDefault,
 			isDefault:  true,
 		}
 	}
 
-	if ip, _ := resolve(&td.dnsClient, config.DNS.NameServerDefault, td.hostInfo.HostCache); ip != nil {
+	if ip, _ := resolve(&td.dnsClient, cfg.V.DNS.NameServerDefault, td.hostInfo.HostCache); ip != nil {
 		td.cdnAddrList[ip2int(ip)] = &cdnTestHostDataResult{
 			addr:       ip.String(),
-			nameServer: config.DNS.NameServerDefault,
+			nameServer: cfg.V.DNS.NameServerDefault,
 			isCache:    true,
 		}
 	}
@@ -237,9 +243,9 @@ func (td *cdnTestHostData) getCdnAddrFromNameServer(host string) {
 	}
 
 	var w sync.WaitGroup
-	chDnsAddr := make(chan []string, config.Test.Worker.Resolve)
+	chDnsAddr := make(chan []string, cfg.V.Test.Worker.Resolve)
 
-	for i := 0; i < config.Test.Worker.Resolve; i++ {
+	for i := 0; i < cfg.V.Test.Worker.Resolve; i++ {
 		w.Add(1)
 		go func() {
 			defer w.Done()
@@ -295,7 +301,7 @@ func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 		return
 	}
 
-	minDate := time.Now().Add(config.Test.ThreatCrowdExpire * -1)
+	minDate := time.Now().Add(cfg.V.Test.ThreatCrowdExpire * -1)
 
 	for _, resolution := range jd.Resolutions {
 		lastResolved, err := time.Parse("2006-01-02", resolution.LastResolved)
@@ -322,9 +328,9 @@ func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 
 func (td *cdnTestHostData) pingAndFilter() {
 	var w sync.WaitGroup
-	chCdnData := make(chan *cdnTestHostDataResult, config.Test.Worker.Ping)
+	chCdnData := make(chan *cdnTestHostDataResult, cfg.V.Test.Worker.Ping)
 
-	for i := 0; i < config.Test.Worker.Ping; i++ {
+	for i := 0; i < cfg.V.Test.Worker.Ping; i++ {
 		w.Add(1)
 		go func() {
 			defer w.Done()
@@ -336,14 +342,14 @@ func (td *cdnTestHostData) pingAndFilter() {
 				}
 				pinger.SetPrivileged(true)
 
-				pinger.Timeout = config.Test.PingTimeout
-				pinger.Count = config.Test.PingCount
+				pinger.Timeout = cfg.V.Test.PingTimeout
+				pinger.Count = cfg.V.Test.PingCount
 
 				pinger.Run()
 
 				stats := pinger.Statistics()
-				if !cdnData.isDefault && (stats.PacketsRecv != config.Test.PingCount || stats.PacketsSent != config.Test.PingCount) {
-					//logV.Printf("[%s] ping abort : %s = r %d / s %d / r %d\n", td.host, cdnData.addr, config.Test.PingCount, stats.PacketsSent, stats.PacketsRecv)
+				if !cdnData.isDefault && (stats.PacketsRecv != cfg.V.Test.PingCount || stats.PacketsSent != cfg.V.Test.PingCount) {
+					//logV.Printf("[%s] ping abort : %s = r %d / s %d / r %d\n", td.host, cdnData.addr, cfg.V.Test.PingCount, stats.PacketsSent, stats.PacketsRecv)
 					continue
 				}
 
@@ -403,13 +409,13 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			)
 		}
 
-		for i := 0; i < config.Test.HttpCount && downloaded < config.Test.HttpSpeedSize; i++ {
+		for i := 0; i < cfg.V.Test.HttpCount && downloaded < cfg.V.Test.HttpSpeedSize; i++ {
 			rand.Shuffle(len(testDataList), func(i, k int) {
 				testDataList[i], testDataList[k] = testDataList[k], testDataList[i]
 			})
 
 			for _, d := range testDataList {
-				if downloaded >= config.Test.HttpSpeedSize {
+				if downloaded >= cfg.V.Test.HttpSpeedSize {
 					break
 				}
 				h.Reset()
@@ -479,17 +485,17 @@ func (td *cdnTestHostData) httpSpeedTest() {
 	}
 
 	var w sync.WaitGroup
-	chCdnData := make(chan *cdnTestHostDataResult, config.Test.Worker.Http)
+	chCdnData := make(chan *cdnTestHostDataResult, cfg.V.Test.Worker.Http)
 
-	for i := 0; i < config.Test.Worker.Http; i++ {
+	for i := 0; i < cfg.V.Test.Worker.Http; i++ {
 		w.Add(1)
 		go func() {
 			defer w.Done()
 
 			client := http.Client{
 				Transport: &http.Transport{},
-				Timeout:   config.Test.HttpTimeout,
 			}
+			cfg.V.HTTP.Client.Timeout.SetHttpClient(&client)
 
 			for cdnData := range chCdnData {
 				cdnData.httpAve = Tf(&client, cdnData)

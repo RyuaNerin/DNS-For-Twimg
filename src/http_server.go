@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"twimgdns/src/cfg"
+
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 )
@@ -32,7 +34,7 @@ func startHttpServer() net.Listener {
 		Handler:  router,
 	}
 
-	listener, err := net.Listen(config.HTTP.Server.ListenType, config.HTTP.Server.Listen)
+	listener, err := net.Listen(cfg.V.HTTP.Server.ListenType, cfg.V.HTTP.Server.Listen)
 	if err != nil {
 		panic(err)
 	}

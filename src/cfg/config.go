@@ -1,4 +1,4 @@
-package src
+package cfg
 
 import (
 	"encoding/hex"
@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	defaultConfigPath = "./config.json"
+	configPath = "./config.json"
 )
 
-var config struct {
+var V struct {
 	HTTP struct {
 		Server struct {
 			ListenType string  `json:"listen_type"`
@@ -26,7 +26,7 @@ var config struct {
 		Client struct {
 			Timeout Timeout `json:"timeout"`
 		}
-	} `json:"http"`
+	}
 	DNS struct {
 		Client struct {
 			LookupInterval time.Duration `json:"lookup_interval"`
@@ -175,13 +175,13 @@ func init() {
 		nil,
 	)
 
-	fs, err := os.Open("config.json")
+	fs, err := os.Open(configPath)
 	if err != nil {
 		panic(err)
 	}
 	defer fs.Close()
 
-	err = jsoniter.NewDecoder(fs).Decode(&config)
+	err = jsoniter.NewDecoder(fs).Decode(&V)
 	if err != nil {
 		panic(err)
 	}

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"time"
+
+	"twimgdns/src/cfg"
 )
 
 var (
@@ -13,10 +15,10 @@ var (
 	statJson  uint64
 )
 
-func statLogWorker() {
-	os.MkdirAll(filepath.Dir(config.Path.StatLog), 0700)
+func init() {
+	os.MkdirAll(filepath.Dir(cfg.V.Path.StatLog), 0700)
 
-	fs, err := os.OpenFile(config.Path.StatLog, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	fs, err := os.OpenFile(cfg.V.Path.StatLog, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		panic(err)
 	}

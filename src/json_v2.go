@@ -8,6 +8,8 @@ import (
 	"text/template"
 	"time"
 
+	"twimgdns/src/cfg"
+
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -27,9 +29,9 @@ type testResultDataCdn struct {
 }
 
 func (data testResultV2) save() {
-	os.MkdirAll(filepath.Dir(config.Path.TestSave), 0700)
+	os.MkdirAll(filepath.Dir(cfg.V.Path.TestSave), 0700)
 
-	fsSave, err := os.OpenFile(config.Path.TestSave, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 640)
+	fsSave, err := os.OpenFile(cfg.V.Path.TestSave, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 640)
 	if err != nil {
 		return
 	}
@@ -48,9 +50,9 @@ func (data testResultV2) save() {
 	fsSave.Close()
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	os.MkdirAll(filepath.Dir(config.Path.ZoneFile), 0700)
+	os.MkdirAll(filepath.Dir(cfg.V.Path.ZoneFile), 0700)
 
-	fsZone, err := os.OpenFile(config.Path.ZoneFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
+	fsZone, err := os.OpenFile(cfg.V.Path.ZoneFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
 		return
 	}
@@ -89,8 +91,8 @@ func (data testResultV2) save() {
 	}
 }
 
-func loadLastTestResult() {
-	fs, err := os.Open(config.Path.TestSave)
+func init() {
+	fs, err := os.Open(cfg.V.Path.TestSave)
 	if err != nil {
 		return
 	}

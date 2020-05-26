@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"twimgdns/src/cfg"
+
 	"github.com/miekg/dns"
 )
 
@@ -50,7 +52,7 @@ func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error
 	var wg sync.WaitGroup
 	res := make(chan *dns.Msg, 1)
 
-	ticker := time.NewTicker(config.DNS.Client.LookupInterval)
+	ticker := time.NewTicker(cfg.V.DNS.Client.LookupInterval)
 	defer ticker.Stop()
 
 	for _, addr := range dnsAddr {
