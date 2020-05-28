@@ -2,14 +2,12 @@ package cfg
 
 import (
 	"encoding/hex"
-	"net/http"
 	"os"
 	"time"
 	"unsafe"
 
 	"github.com/dustin/go-humanize"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/miekg/dns"
 )
 
 const (
@@ -19,18 +17,28 @@ const (
 var V struct {
 	HTTP struct {
 		Server struct {
-			ListenType string      `json:"listen_type"`
-			Listen     string      `json:"listen"`
-			Timeout    HttpTimeout `json:"timeout"`
+			ListenType string `json:"listen_type"`
+			Listen     string `json:"listen"`
 		}
 		Client struct {
-			Timeout HttpTimeout `json:"timeout"`
+			Timeout struct {
+				Timeout               time.Duration `json:"timeout"`
+				IdleConnTimeout       time.Duration `json:"idle_conn_timeout"`
+				ExpectContinueTimeout time.Duration `json:"expect_continue_timeout"`
+				ResponseHeaderTimeout time.Duration `json:"response_header_timeout"`
+				TLSHandshakeTimeout   time.Duration `json:"tls_handshake_timeout"`
+			} `json:"timeout"`
 		}
 	}
 	DNS struct {
 		Client struct {
 			LookupInterval time.Duration `json:"lookup_interval"`
-			Timeout        DnsTimeout    `json:"client"`
+			Timeout        struct {
+				Timeout      time.Duration `json:"timeout"`
+				ReadTimeout  time.Duration `json:"read_timeout"`
+				WriteTimeout time.Duration `json:"write_timeout"`
+				DialTimeout  time.Duration `json:"dial_timeout"`
+			} `json:"client"`
 		} `json:"client"`
 
 		NameServerDefault []string            `json:"nameserver_default"`
@@ -50,7 +58,6 @@ var V struct {
 		PingCount   int           `json:"ping_count"`
 		PingTimeout time.Duration `json:"ping_timeout"`
 
-		HttpCount     int           `json:"http_count"`
 		HttpTimeout   time.Duration `json:"http_timeout"`
 		HttpSpeedSize uint64        `json:"http_test_size"`
 
@@ -69,38 +76,6 @@ type TestDataMap map[string][]byte
 type HostInfo struct {
 	Host      []string `json:"host"` // 검사할 때 쓸 추가 호스트
 	HostCache string   `json:"host_cache"`
-}
-
-type DnsTimeout struct {
-	Timeout      time.Duration `json:"timeout"`
-	ReadTimeout  time.Duration `json:"read_timeout"`
-	WriteTimeout time.Duration `json:"write_timeout"`
-	DialTimeout  time.Duration `json:"dial_timeout"`
-}
-
-func (t DnsTimeout) Set(c *dns.Client) {
-	c.Timeout = t.Timeout
-	c.ReadTimeout = t.ReadTimeout
-	c.WriteTimeout = t.WriteTimeout
-	c.DialTimeout = t.DialTimeout
-}
-
-type HttpTimeout struct {
-	Timeout               time.Duration `json:"timeout"`
-	IdleConnTimeout       time.Duration `json:"idle_conn_timeout"`
-	ExpectContinueTimeout time.Duration `json:"expect_continue_timeout"`
-	ResponseHeaderTimeout time.Duration `json:"response_header_timeout"`
-	TLSHandshakeTimeout   time.Duration `json:"tls_handshake_timeout"`
-}
-
-func (t HttpTimeout) Set(c *http.Client) {
-	c.Timeout = t.Timeout
-	c.Transport = &http.Transport{
-		IdleConnTimeout:       t.IdleConnTimeout,
-		ExpectContinueTimeout: t.ExpectContinueTimeout,
-		ResponseHeaderTimeout: t.ResponseHeaderTimeout,
-		TLSHandshakeTimeout:   t.TLSHandshakeTimeout,
-	}
 }
 
 func init() {

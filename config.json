@@ -134,10 +134,9 @@
 		
 		"threatcrowd_expire": "8760h",
 
-		"ping_count"	: 10,
-		"ping_timeout"	: "20s",
+		"ping_count"	: 5,
+		"ping_timeout"	: "10s",
 	
-		"http_count": 2,
 		"http_timeout": "30s",
     "http_test_size": "100MB",
     

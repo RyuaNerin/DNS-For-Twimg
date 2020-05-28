@@ -10,6 +10,7 @@ import (
 
 	"twimgdns/src/cfg"
 
+	"github.com/getsentry/sentry-go"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -33,6 +34,7 @@ func (data testResultV2) save() {
 
 	fsSave, err := os.OpenFile(cfg.V.Path.TestSave, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 640)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 	defer fsSave.Close()
@@ -44,6 +46,7 @@ func (data testResultV2) save() {
 
 	err = jsoniter.NewEncoder(bw).Encode(data)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 	bw.Flush()
@@ -54,6 +57,7 @@ func (data testResultV2) save() {
 
 	fsZone, err := os.OpenFile(cfg.V.Path.ZoneFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0700)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 	defer fsZone.Close()
@@ -72,6 +76,7 @@ func (data testResultV2) save() {
 
 	err = zoneTemplate.Execute(bw, &td)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 
@@ -94,14 +99,14 @@ func (data testResultV2) save() {
 func init() {
 	fs, err := os.Open(cfg.V.Path.TestSave)
 	if err != nil {
-		return
+		panic(err)
 	}
 	defer fs.Close()
 
 	data := make(testResultV2)
 	err = jsoniter.NewDecoder(fs).Decode(&data)
 	if err != nil {
-		return
+		panic(err)
 	}
 
 	setBestCdn(data)

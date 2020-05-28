@@ -1,7 +1,6 @@
 package src
 
 import (
-	"errors"
 	"net"
 	"strings"
 	"sync"
@@ -9,10 +8,21 @@ import (
 
 	"twimgdns/src/cfg"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/miekg/dns"
 )
 
-func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error) {
+var (
+	dnsClient = dns.Client{
+		Net:          "udp",
+		Timeout:      cfg.V.DNS.Client.Timeout.Timeout,
+		ReadTimeout:  cfg.V.DNS.Client.Timeout.ReadTimeout,
+		WriteTimeout: cfg.V.DNS.Client.Timeout.WriteTimeout,
+		DialTimeout:  cfg.V.DNS.Client.Timeout.DialTimeout,
+	}
+)
+
+func resolve(dnsAddr []string, host string) (ip net.IP, ok bool) {
 	if !strings.HasSuffix(host, ".") {
 		host = host + "."
 	}
@@ -21,18 +31,18 @@ func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error
 	msg.SetQuestion(host, dns.TypeA)
 	msg.SetEdns0(4096, true)
 
-	rt := func(r *dns.Msg) (ip net.IP, err error) {
+	rt := func(r *dns.Msg) (ip net.IP, ok bool) {
 		if r == nil || r.Rcode != dns.RcodeSuccess {
-			return nil, errors.New("r.Rcode is not dns.RcodeSuccess")
+			return nil, false
 		}
 
 		for _, ans := range r.Answer {
 			if ans.Header().Rrtype == dns.TypeA {
-				return ans.(*dns.A).A, nil
+				return ans.(*dns.A).A, true
 			}
 		}
 
-		return nil, errors.New("r.Answer did not contains dns.TypeA")
+		return nil, false
 	}
 
 	for i, addr := range dnsAddr {
@@ -42,9 +52,10 @@ func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error
 	}
 
 	if len(dnsAddr) == 1 {
-		r, _, err := c.Exchange(&msg, dnsAddr[0])
+		r, _, err := dnsClient.Exchange(&msg, dnsAddr[0])
 		if err != nil {
-			return nil, err
+			sentry.CaptureException(err)
+			return nil, false
 		}
 		return rt(r)
 	}
@@ -60,8 +71,9 @@ func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error
 
 		go func(nameserver string) {
 			defer wg.Done()
-			r, _, err := c.Exchange(&msg, nameserver)
+			r, _, err := dnsClient.Exchange(&msg, nameserver)
 			if err != nil {
+				sentry.CaptureException(err)
 				return
 			}
 			if r != nil && r.Rcode != dns.RcodeSuccess {
@@ -90,5 +102,5 @@ func resolve(c *dns.Client, dnsAddr []string, host string) (ip net.IP, err error
 	default:
 	}
 
-	return nil, errors.New("failed to get an valid answer")
+	return nil, false
 }

@@ -84,6 +84,12 @@ func (rc *responseCache) update(update func(w io.Writer) error) {
 var httpTemplate = template.Must(template.ParseGlob("public/*.htm"))
 
 func setBestCdn(data testResultV2) {
+	for _, r := range data {
+		if r.Best.Addr == "" {
+			return
+		}
+	}
+
 	httpIndex.update(
 		func(w io.Writer) error {
 			return httpTemplate.ExecuteTemplate(w, "index.htm", data)
@@ -95,12 +101,12 @@ func setBestCdn(data testResultV2) {
 	j := make(testResultV1, len(data))
 	for host, v := range data {
 		var d testResultV1Data
-		d.IP = v.Best.Addr
+		d.Ip = v.Best.Addr
 
 		d.HTTPSuccess = true
-		d.HTTP.BpsMin = v.Best.Speed
-		d.HTTP.BpsAvg = v.Best.Speed
-		d.HTTP.BpsMax = v.Best.Speed
+		d.Http.BpsMin = v.Best.Speed
+		d.Http.BpsAvg = v.Best.Speed
+		d.Http.BpsMax = v.Best.Speed
 
 		d.PingSuccess = true
 		d.Ping.RttAvg = v.Best.Ping.Seconds() * 1000

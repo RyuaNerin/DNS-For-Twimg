@@ -11,6 +11,7 @@ import (
 
 	"twimgdns/src/cfg"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 )
@@ -66,7 +67,7 @@ func handlePanic(ctx *gin.Context) {
 				ctx.Abort()
 			} else {
 				fmt.Printf("%+v", errors.WithStack(err.(error)))
-				//sentry.CaptureException(err.(error))
+				sentry.CaptureException(err.(error))
 				ctx.Abort()
 			}
 		}

@@ -2,13 +2,11 @@ package src
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/binary"
-	"encoding/pem"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net"
@@ -21,6 +19,7 @@ import (
 	"twimgdns/src/cfg"
 
 	"github.com/dustin/go-humanize"
+	"github.com/getsentry/sentry-go"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
 	"github.com/sparrc/go-ping"
@@ -28,35 +27,43 @@ import (
 
 const (
 	cacheCAPath = "./twimg.crt"
+
+	contextHost int = 0xF7ABC620D
 )
 
 var (
-	tlsConfig tls.Config
-
 	httpClient = http.Client{
+		Timeout: cfg.V.HTTP.Client.Timeout.Timeout,
 		Transport: &http.Transport{
-			TLSClientConfig:   &tlsConfig,
-			DisableKeepAlives: true,
+			ForceAttemptHTTP2: true,
+
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+
+			IdleConnTimeout:       cfg.V.HTTP.Client.Timeout.IdleConnTimeout,
+			ExpectContinueTimeout: cfg.V.HTTP.Client.Timeout.ExpectContinueTimeout,
+			ResponseHeaderTimeout: cfg.V.HTTP.Client.Timeout.ResponseHeaderTimeout,
+			TLSHandshakeTimeout:   cfg.V.HTTP.Client.Timeout.TLSHandshakeTimeout,
+
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				var d net.Dialer
+
+				v := ctx.Value(contextHost)
+				if h, ok := v.(string); ok && h != "" {
+					_, port, err := net.SplitHostPort(addr)
+					if err == nil {
+						return d.DialContext(ctx, network, net.JoinHostPort(h, port))
+					}
+				}
+
+				return d.DialContext(ctx, network, addr)
+			},
 		},
 	}
 )
 
 func init() {
-	cfg.V.HTTP.Client.Timeout.Set(&httpClient)
-
-	pemData, err := ioutil.ReadFile(cacheCAPath)
-	if err != nil && err != io.EOF {
-		panic(err)
-	}
-	p, _ := pem.Decode(pemData)
-	cert, err := x509.ParseCertificate(p.Bytes)
-	if err != nil {
-		panic(err)
-	}
-
-	tlsConfig.RootCAs = x509.NewCertPool()
-	tlsConfig.RootCAs.AddCert(cert)
-
 	go func() {
 		waitChan := make(chan struct{}, 1)
 		waitChan <- struct{}{}
@@ -114,6 +121,8 @@ func (ct *cdnTest) do() {
 		}
 		td.do()
 
+		httpClient.CloseIdleConnections()
+
 		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
 		log.Printf("[%s] Cache   : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Cache.Addr, td.result.Cache.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Cache.Speed)))
 		log.Printf("[%s] Default : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Default.Addr, td.result.Default.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Default.Speed)))
@@ -128,6 +137,7 @@ func (ct *cdnTest) do() {
 func (ct *cdnTest) getPublicDNSServerList(url string) {
 	r, err := httpClient.Get(url)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 
@@ -137,6 +147,7 @@ func (ct *cdnTest) getPublicDNSServerList(url string) {
 
 	err = jsoniter.NewDecoder(r.Body).Decode(&dnsList)
 	if err != nil && err != io.EOF {
+		sentry.CaptureException(err)
 		return
 	}
 
@@ -185,11 +196,10 @@ func (td *cdnTestHostData) do() {
 	td.dnsClient = dns.Client{
 		Net: "udp",
 	}
-	cfg.V.DNS.Client.Timeout.Set(&td.dnsClient)
 
 	//////////////////////////////////////////////////
 
-	if ip, _ := resolve(&td.dnsClient, cfg.V.DNS.NameServerDefault, td.host); ip != nil {
+	if ip, _ := resolve(cfg.V.DNS.NameServerDefault, td.host); ip != nil {
 		td.cdnAddrList[ip2int(ip)] = &cdnTestHostDataResult{
 			addr:       ip.String(),
 			nameServer: cfg.V.DNS.NameServerDefault,
@@ -197,7 +207,7 @@ func (td *cdnTestHostData) do() {
 		}
 	}
 
-	if ip, _ := resolve(&td.dnsClient, cfg.V.DNS.NameServerDefault, td.hostInfo.HostCache); ip != nil {
+	if ip, _ := resolve(cfg.V.DNS.NameServerDefault, td.hostInfo.HostCache); ip != nil {
 		td.cdnAddrList[ip2int(ip)] = &cdnTestHostDataResult{
 			addr:       ip.String(),
 			nameServer: cfg.V.DNS.NameServerDefault,
@@ -276,15 +286,12 @@ func (td *cdnTestHostData) getCdnAddrFromNameServer(host string) {
 			defer w.Done()
 
 			for dnsAddr := range chDnsAddr {
-				ip, err := resolve(&td.dnsClient, dnsAddr, host)
-				if err != nil {
-					//logV.Printf("[%s] resolve fail : %s %v fail\n", td.host, host, dnsAddr)
+				ip, ok := resolve(dnsAddr, host)
+				if !ok {
 					continue
 				}
 
 				if ip != nil && ip.To4() != nil {
-					//logV.Printf("[%s] resolve succ : %s %v -> %s\n", td.host, host, dnsAddr, ip.String())
-
 					ipi := ip2int(ip)
 
 					td.cdnAddrListLock.Lock()
@@ -311,6 +318,7 @@ func (td *cdnTestHostData) getCdnAddrFromNameServer(host string) {
 func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 	res, err := httpClient.Get("https://www.threatcrowd.org/searchApi/v2/domain/report/?domain=" + host)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 	defer res.Body.Close()
@@ -323,6 +331,7 @@ func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 	}
 	err = jsoniter.NewDecoder(res.Body).Decode(&jd)
 	if err != nil {
+		sentry.CaptureException(err)
 		return
 	}
 
@@ -331,6 +340,7 @@ func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 	for _, resolution := range jd.Resolutions {
 		lastResolved, err := time.Parse("2006-01-02", resolution.LastResolved)
 		if err != nil {
+			sentry.CaptureException(err)
 			continue
 		}
 
@@ -363,6 +373,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 			for cdnData := range chCdnData {
 				pinger, err := ping.NewPinger(cdnData.addr)
 				if err != nil {
+					sentry.CaptureException(err)
 					continue
 				}
 				pinger.SetPrivileged(true)
@@ -374,11 +385,8 @@ func (td *cdnTestHostData) pingAndFilter() {
 
 				stats := pinger.Statistics()
 				if !cdnData.isDefault && (stats.PacketsRecv != cfg.V.Test.PingCount || stats.PacketsSent != cfg.V.Test.PingCount) {
-					//logV.Printf("[%s] ping abort : %s = r %d / s %d / r %d\n", td.host, cdnData.addr, cfg.V.Test.PingCount, stats.PacketsSent, stats.PacketsRecv)
 					continue
 				}
-
-				//logV.Printf("[%s] ping succ : %s = %.2f\n", td.host, cdnData.addr, stats.AvgRtt.Seconds()*1000)
 
 				cdnData.pingAve = stats.AvgRtt
 				atomic.AddInt64(&td.pingSum, stats.AvgRtt.Microseconds())
@@ -408,18 +416,16 @@ func (td *cdnTestHostData) pingAndFilter() {
 }
 
 func (td *cdnTestHostData) httpSpeedTest() {
-	type testData struct {
-		url  string
-		hash []byte
-	}
+	Tf := func(cdnData *cdnTestHostDataResult) float64 {
+		type testData struct {
+			url  string
+			hash []byte
+		}
 
-	Tf := func(client *http.Client, cdnData *cdnTestHostDataResult) float64 {
 		h := sha256.New()
 
 		var tSum float64 = 0
 		count := 0
-
-		tr := client.Transport.(*http.Transport)
 
 		var downloaded uint64 = 0
 
@@ -434,77 +440,53 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			)
 		}
 
-		for i := 0; i < cfg.V.Test.HttpCount && downloaded < cfg.V.Test.HttpSpeedSize; i++ {
-			rand.Shuffle(len(testDataList), func(i, k int) {
-				testDataList[i], testDataList[k] = testDataList[k], testDataList[i]
-			})
+		for downloaded < cfg.V.Test.HttpSpeedSize {
+			d := testDataList[rand.Intn(len(testDataList))]
 
-			for _, d := range testDataList {
-				if downloaded >= cfg.V.Test.HttpSpeedSize {
-					break
-				}
-				h.Reset()
+			h.Reset()
 
-				tr.Dial = func(network, addr string) (net.Conn, error) {
-					_, port, err := net.SplitHostPort(addr)
-					if err != nil {
-						return nil, err
-					}
-					return net.Dial(network, net.JoinHostPort(cdnData.addr, port))
-				}
-
-				req, err := http.NewRequest("GET", d.url, nil)
-				if err != nil {
-					//logV.Printf("[%s] http abort : %15s = err\n", td.host, cdnData.addr)
-					return 0
-				}
-
-				startTime := time.Now()
-				res, err := client.Do(req)
-				if err != nil {
-					//logV.Printf("[%s] http abort : %15s = err\n", td.host, cdnData.addr)
-					if res != nil && res.Body != nil {
-						res.Body.Close()
-					}
-					return 0
-				}
-
-				wt, err := io.Copy(h, res.Body)
-				res.Body.Close()
-
-				dt := time.Now().Sub(startTime).Seconds()
-
-				if err != nil && err != io.EOF {
-					//logV.Printf("[%s] http abort : %15s = timeout\n", td.host, cdnData.addr)
-					return 0
-				}
-
-				if !bytes.Equal(h.Sum(nil), d.hash) {
-					//logV.Printf("[%s] http abort : %15s = hash\n", td.host, cdnData.addr)
-					return 0
-				}
-
-				downloaded += uint64(wt)
-
-				tSum += float64(wt) / dt
-				count++
+			req, err := http.NewRequestWithContext(
+				context.WithValue(context.Background(), contextHost, cdnData.addr),
+				"GET",
+				d.url,
+				nil,
+			)
+			if err != nil {
+				sentry.CaptureException(err)
+				return 0
 			}
+
+			startTime := time.Now()
+			res, err := httpClient.Do(req)
+			if err != nil {
+				sentry.CaptureException(err)
+				if res != nil && res.Body != nil {
+					res.Body.Close()
+				}
+				return 0
+			}
+
+			wt, err := io.Copy(h, res.Body)
+			dt := time.Now().Sub(startTime).Seconds()
+
+			if err != nil && err != io.EOF {
+				sentry.CaptureException(err)
+				res.Body.Close()
+				return 0
+			}
+
+			if !bytes.Equal(h.Sum(nil), d.hash) {
+				res.Body.Close()
+				return 0
+			}
+
+			tSum += float64(wt) / dt
+			count++
+
+			downloaded += uint64(wt)
 		}
 
 		tSum /= float64(count)
-
-		/**
-		logV.Printf(
-			"[%s] http succ : %15s = %9s/s (ping: %6.2f) (isDefault: %5v) (isCache: %5v) (%v)\n",
-			td.host,
-			cdnData.addr,
-			humanize.IBytes(uint64(tSum)),
-			cdnData.pingAve.Seconds()*1000,
-			cdnData.isDefault,
-			cdnData.isCache,
-			cdnData.nameServer,
-		)
-		*/
 
 		return tSum
 	}
@@ -517,11 +499,8 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		go func() {
 			defer w.Done()
 
-			var client http.Client
-			cfg.V.HTTP.Client.Timeout.Set(&client)
-
 			for cdnData := range chCdnData {
-				cdnData.httpAve = Tf(&client, cdnData)
+				cdnData.httpAve = Tf(cdnData)
 			}
 		}()
 	}
