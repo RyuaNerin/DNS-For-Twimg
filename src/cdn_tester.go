@@ -46,6 +46,8 @@ var (
 			ResponseHeaderTimeout: cfg.V.HTTP.Client.Timeout.ResponseHeaderTimeout,
 			TLSHandshakeTimeout:   cfg.V.HTTP.Client.Timeout.TLSHandshakeTimeout,
 
+			DisableKeepAlives: true,
+
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				var d net.Dialer
 
@@ -424,11 +426,6 @@ func (td *cdnTestHostData) httpSpeedTest() {
 
 		h := sha256.New()
 
-		var tSum float64 = 0
-		count := 0
-
-		var downloaded uint64 = 0
-
 		testDataList := make([]testData, 0, len(td.hostTestData))
 		for url, hash := range td.hostTestData {
 			testDataList = append(
@@ -439,6 +436,9 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				},
 			)
 		}
+
+		var downloaded uint64 = 0
+		startTime := time.Now()
 
 		for downloaded < cfg.V.Test.HttpSpeedSize {
 			d := testDataList[rand.Intn(len(testDataList))]
@@ -455,9 +455,9 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				sentry.CaptureException(err)
 				return 0
 			}
+			req.Close = true
 
-			startTime := time.Now()
-			res, err := httpClient.Do(req)
+			res, err := httpClient.Transport.RoundTrip(req)
 			if err != nil {
 				sentry.CaptureException(err)
 				if res != nil && res.Body != nil {
@@ -467,7 +467,6 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			}
 
 			wt, err := io.Copy(h, res.Body)
-			dt := time.Now().Sub(startTime).Seconds()
 
 			if err != nil && err != io.EOF {
 				sentry.CaptureException(err)
@@ -480,15 +479,10 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				return 0
 			}
 
-			tSum += float64(wt) / dt
-			count++
-
 			downloaded += uint64(wt)
 		}
 
-		tSum /= float64(count)
-
-		return tSum
+		return float64(downloaded) / time.Now().Sub(startTime).Seconds()
 	}
 
 	var w sync.WaitGroup

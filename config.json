@@ -137,7 +137,7 @@
 		"ping_count"	: 5,
 		"ping_timeout"	: "10s",
 	
-		"http_timeout": "30s",
+		"http_timeout": "20s",
     "http_test_size": "100MB",
     
     "host": {
