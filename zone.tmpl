@@ -12,6 +12,6 @@ $TTL 15M
 	NS	dns1.twimg.ryuar.in.
 	NS	dns2.twimg.ryuar.in.
 
-{{ range $host, $data := .Data }}
+{{ range $host, $data := .Data.Detail }}
 {{ $host }}		A		{{ $data.Best.Addr }}
 {{ end }}

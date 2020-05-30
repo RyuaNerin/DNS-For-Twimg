@@ -84,7 +84,7 @@ func (rc *responseCache) update(update func(w io.Writer) error) {
 var httpTemplate = template.Must(template.ParseGlob("public/*.htm"))
 
 func setBestCdn(data testResultV2) {
-	for _, r := range data {
+	for _, r := range data.Detail {
 		if r.Best.Addr == "" {
 			return
 		}
@@ -98,8 +98,8 @@ func setBestCdn(data testResultV2) {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	j := make(testResultV1, len(data))
-	for host, v := range data {
+	j := make(testResultV1, len(data.Detail))
+	for host, v := range data.Detail {
 		var d testResultV1Data
 		d.Ip = v.Best.Addr
 

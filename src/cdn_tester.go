@@ -27,12 +27,14 @@ import (
 
 const (
 	cacheCAPath = "./twimg.crt"
-
-	contextHost int = 0xF7ABC620D
 )
 
 var (
-	httpClient = http.Client{
+	httpClient = newHttpClient()
+)
+
+func newHttpClient() *http.Client {
+	return &http.Client{
 		Timeout: cfg.V.HTTP.Client.Timeout.Timeout,
 		Transport: &http.Transport{
 			ForceAttemptHTTP2: true,
@@ -45,25 +47,9 @@ var (
 			ExpectContinueTimeout: cfg.V.HTTP.Client.Timeout.ExpectContinueTimeout,
 			ResponseHeaderTimeout: cfg.V.HTTP.Client.Timeout.ResponseHeaderTimeout,
 			TLSHandshakeTimeout:   cfg.V.HTTP.Client.Timeout.TLSHandshakeTimeout,
-
-			DisableKeepAlives: true,
-
-			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-				var d net.Dialer
-
-				v := ctx.Value(contextHost)
-				if h, ok := v.(string); ok && h != "" {
-					_, port, err := net.SplitHostPort(addr)
-					if err == nil {
-						return d.DialContext(ctx, network, net.JoinHostPort(h, port))
-					}
-				}
-
-				return d.DialContext(ctx, network, addr)
-			},
 		},
 	}
-)
+}
 
 func init() {
 	go func() {
@@ -94,7 +80,9 @@ type cdnTest struct {
 func (ct *cdnTest) do() {
 	ct.nameServerMap = make(map[uint32]struct{})
 
-	result := make(testResultV2, 2)
+	result := testResultV2{
+		Detail: make(map[string]testResultData, 2),
+	}
 
 	for _, namerserverList := range cfg.V.DNS.NameServer {
 		l := make([]string, 0, len(namerserverList))
@@ -123,14 +111,14 @@ func (ct *cdnTest) do() {
 		}
 		td.do()
 
-		httpClient.CloseIdleConnections()
-
 		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
 		log.Printf("[%s] Cache   : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Cache.Addr, td.result.Cache.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Cache.Speed)))
 		log.Printf("[%s] Default : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Default.Addr, td.result.Default.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Default.Speed)))
 
-		result[host] = td.result
+		result.Detail[host] = td.result
 	}
+
+	result.UpdatedAt = time.Now()
 
 	setBestCdn(result)
 	result.save()
@@ -418,7 +406,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 }
 
 func (td *cdnTestHostData) httpSpeedTest() {
-	Tf := func(cdnData *cdnTestHostDataResult) float64 {
+	Tf := func(client *http.Client, cdnData *cdnTestHostDataResult) float64 {
 		type testData struct {
 			url  string
 			hash []byte
@@ -437,6 +425,12 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			)
 		}
 
+		tr := client.Transport.(*http.Transport)
+		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			_, port, _ := net.SplitHostPort(addr)
+			return net.Dial(network, net.JoinHostPort(cdnData.addr, port))
+		}
+
 		var downloaded uint64 = 0
 		startTime := time.Now()
 
@@ -445,19 +439,13 @@ func (td *cdnTestHostData) httpSpeedTest() {
 
 			h.Reset()
 
-			req, err := http.NewRequestWithContext(
-				context.WithValue(context.Background(), contextHost, cdnData.addr),
-				"GET",
-				d.url,
-				nil,
-			)
+			req, err := http.NewRequest("GET", d.url, nil)
 			if err != nil {
 				sentry.CaptureException(err)
 				return 0
 			}
-			req.Close = true
 
-			res, err := httpClient.Transport.RoundTrip(req)
+			res, err := client.Do(req)
 			if err != nil {
 				sentry.CaptureException(err)
 				if res != nil && res.Body != nil {
@@ -465,6 +453,8 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				}
 				return 0
 			}
+
+			httpClient.Transport.(*http.Transport).Clone()
 
 			wt, err := io.Copy(h, res.Body)
 
@@ -493,8 +483,10 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		go func() {
 			defer w.Done()
 
+			client := newHttpClient()
+
 			for cdnData := range chCdnData {
-				cdnData.httpAve = Tf(cdnData)
+				cdnData.httpAve = Tf(client, cdnData)
 			}
 		}()
 	}

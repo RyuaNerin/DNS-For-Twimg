@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"text/template"
 	"time"
+	"unsafe"
 
 	"twimgdns/src/cfg"
 
@@ -14,15 +15,19 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
+const timeFormat = "2006-01-02 15:04 (Z07:00)"
+
 var zoneTemplate = template.Must(template.ParseFiles("./zone.tmpl"))
 
-type testResultV2 map[string]testResultData
+type testResultV2 struct {
+	UpdatedAt time.Time                 `json:"updated_at"`
+	Detail    map[string]testResultData `json:"detail"`
+}
 type testResultData struct {
 	Default testResultDataCdn `json:"default"`
 	Cache   testResultDataCdn `json:"cache"`
 	Best    testResultDataCdn `json:"best"`
 }
-
 type testResultDataCdn struct {
 	Addr  string        `json:"addr"`
 	Ping  time.Duration `json:"ping"`
@@ -97,13 +102,35 @@ func (data testResultV2) save() {
 }
 
 func init() {
+	jsoniter.RegisterTypeEncoderFunc(
+		"time.Time",
+		func(ptr unsafe.Pointer, stream *jsoniter.Stream) {
+			stream.WriteString((*time.Time)(ptr).Format(timeFormat))
+		},
+		nil,
+	)
+
+	jsoniter.RegisterTypeDecoderFunc(
+		"time.Time",
+		func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
+			s := iter.ReadString()
+			t, err := time.Parse(timeFormat, s)
+			if err != nil {
+				iter.ReportError("time.Time", err.Error())
+				return
+			}
+
+			*(*time.Time)(ptr) = t
+		},
+	)
+
 	fs, err := os.Open(cfg.V.Path.TestSave)
 	if err != nil {
 		panic(err)
 	}
 	defer fs.Close()
 
-	data := make(testResultV2)
+	var data testResultV2
 	err = jsoniter.NewDecoder(fs).Decode(&data)
 	if err != nil {
 		panic(err)
