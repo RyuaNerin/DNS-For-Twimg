@@ -1,7 +1,6 @@
 package cfg
 
 import (
-	"encoding/hex"
 	"os"
 	"time"
 	"unsafe"
@@ -61,8 +60,7 @@ var V struct {
 		HttpTimeout   time.Duration `json:"http_timeout"`
 		HttpSpeedSize uint64        `json:"http_test_size"`
 
-		Host     map[string]*HostInfo   `json:"host"`
-		TestFile map[string]TestDataMap `json:"test_file"` // Test[Url] = Hash
+		Host map[string]*HostInfo `json:"host"`
 	} `json:"test"`
 	Path struct {
 		ZoneFile string `json:"zone_file"`
@@ -70,8 +68,6 @@ var V struct {
 		StatLog  string `json:"stat_log"`
 	} `json:"path"`
 }
-
-type TestDataMap map[string][]byte
 
 type HostInfo struct {
 	Host      []string `json:"host"` // 검사할 때 쓸 추가 호스트
@@ -97,38 +93,6 @@ func init() {
 
 			case jsoniter.NumberValue:
 				*(*uint64)(ptr) = uint64(iter.ReadUint64())
-
-			default:
-				iter.ReportError("uint64Decoder", "wrong type")
-			}
-		},
-	)
-
-	jsoniter.RegisterTypeDecoderFunc(
-		"[]uint8",
-		func(ptr unsafe.Pointer, iter *jsoniter.Iterator) {
-			switch iter.WhatIsNext() {
-			case jsoniter.NilValue:
-				iter.Skip()
-
-			case jsoniter.StringValue:
-				b, err := hex.DecodeString(iter.ReadString())
-				if err != nil {
-					iter.ReportError("hexDecoder", err.Error())
-					return
-				}
-
-				*(*[]byte)(ptr) = b
-
-			case jsoniter.ArrayValue:
-				var arr []byte
-				iter.ReadArrayCB(func(iter *jsoniter.Iterator) bool {
-					i := iter.ReadInt()
-					arr = append(arr, byte(i))
-					return true
-				})
-
-				*(*[]byte)(ptr) = arr
 
 			default:
 				iter.ReportError("uint64Decoder", "wrong type")

@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"crypto/sha256"
+	"encoding/csv"
 	"encoding/hex"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -33,6 +33,8 @@ func main() {
 	fo.Truncate(0)
 	bfo := bufio.NewWriter(fo)
 
+	w := csv.NewWriter(bfo)
+
 	for {
 		line, err := bfi.ReadString('\n')
 		if err != nil && err != io.EOF {
@@ -56,7 +58,7 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Fprintf(bfo, "\"%s\": \"%s\",\n", line, hex.EncodeToString(h1.Sum(nil)))
+		w.Write([]string{line, hex.EncodeToString(h1.Sum(nil))})
 	}
 
 	bfo.Flush()

@@ -107,7 +107,7 @@ func (ct *cdnTest) do() {
 			p:            ct,
 			host:         host,
 			hostInfo:     hostInfo,
-			hostTestData: cfg.V.Test.TestFile[host],
+			hostTestData: cfg.TestFile[host],
 		}
 		td.do()
 
