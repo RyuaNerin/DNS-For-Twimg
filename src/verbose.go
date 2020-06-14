@@ -20,9 +20,9 @@ var (
 		}
 
 		if verbose {
-			gin.SetMode(gin.ReleaseMode)
 			return log.New(os.Stdout, "", log.LstdFlags)
 		} else {
+			gin.SetMode(gin.ReleaseMode)
 			return log.New(ioutil.Discard, "", 0)
 		}
 	}()
