@@ -137,26 +137,21 @@
 		"ping_count"	: 5,
 		"ping_timeout"	: "10s",
 	
-		"http_timeout": "20s",
-    "http_test_size": "100MB",
+		"http_timeout": "30s",
+    "http_test_size": "50MB",
     
     "host": {
-      "pbs.twimg.com": {
-        "host_cache" : "pbs.cache.twimg.ryuar.in",
-        "host":[
+      "pbs.twimg.com": [
           "pbs.twimg.com",
           "pbs-ak.twimg.com",
           "104.76.97.12"
         ]
-      },
-      "video.twimg.com": {
-        "host_cache" : "video.cache.twimg.ryuar.in",
-        "host": [
+      ,
+      "video.twimg.com": [
           "video.twimg.com",
           "video-ak.twimg.com",
           "104.76.97.13"
         ]
-      }
     }
 	}
 }

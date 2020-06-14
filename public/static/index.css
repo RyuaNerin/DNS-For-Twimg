@@ -1,0 +1,101 @@
+@charset "utf-8";
+
+html,
+body {
+	height: 100%;
+	width: 100%;
+}
+body,
+code,
+kbd,
+pre,
+samp {
+	font-family: "Apple SD 산돌고딕 Neo", "Apple SD Gothic Neo", "나눔 고딕",
+		"맑은 고딕", "Malgun Gothic", "돋움", dotum, sans-serif;
+	-webkit-tap-highlight-color: #222;
+}
+::-moz-selection {
+	color: white;
+	text-shadow: none;
+	background: #222;
+}
+::selection {
+	color: white;
+	text-shadow: none;
+	background: #222;
+}
+img::selection {
+	color: white;
+	background: transparent;
+}
+img::-moz-selection {
+	color: white;
+	background: transparent;
+}
+
+/**************************************************/
+/* 헤더 영역 */
+header {
+	/* background-color: #6dc3e8; */
+	background-color: #4fbeee;
+	color: white;
+	position: relative;
+	width: 100%;
+	min-height: 100%;
+	font-size: large;
+	font-weight: bold;
+	text-align: center;
+}
+@media (max-height: 600px) {
+	header {
+		min-height: 600px;
+	}
+}
+
+header .icon {
+	background-image: url("/static/img/img.svg");
+	background-size: contain;
+	width: 384px;
+	height: 384px;
+	margin-bottom: -32px;
+}
+
+.hr {
+	display: inline-block;
+}
+.hr:after {
+	content: "";
+	display: block;
+	border-top: 3px solid #0b3446;
+	margin-bottom: 0.25em;
+}
+
+.profile-icon {
+	width: 96px;
+	height: 96px;
+
+	border-radius: 50%;
+}
+
+section:nth-child(even) {
+	background-color: #dbf0f9;
+}
+
+section:nth-child(odd) {
+	background-color: #fafcff;
+}
+
+.os-badge {
+	font-size: 4em;
+	word-spacing: 0.5em;
+}
+
+.os-badge a {
+	text-decoration: none;
+	display: inline-block;
+}
+
+.os-badge2 a img {
+	font-size: 6em;
+	height: 1em;
+}

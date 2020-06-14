@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/hex"
 	"hash/fnv"
-	"html/template"
 	"io"
 	"net/http"
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
+	"twimgdns/src/cfg"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -19,6 +20,7 @@ type responseCache struct {
 	l sync.RWMutex
 
 	header        map[string]string
+	expires       string
 	etag          string
 	contentLength string
 
@@ -29,10 +31,6 @@ type responseCache struct {
 }
 
 var (
-	httpIndex = responseCache{
-		dataBuff: bytes.NewBuffer(nil),
-		stat:     &statIndex,
-	}
 	httpJson = responseCache{
 		dataBuff: bytes.NewBuffer(nil),
 		stat:     &statJson,
@@ -54,7 +52,7 @@ func (rc *responseCache) Handler(ctx *gin.Context) {
 	if rc.data == nil {
 		ctx.Status(http.StatusNoContent)
 	} else {
-		h.Set("Cache-Control", "private,max-age=1800")
+		h.Set("Expires", rc.expires)
 		h.Set("ETag", rc.etag)
 
 		if etag := ctx.GetHeader("If-None-Match"); etag == rc.etag {
@@ -68,20 +66,20 @@ func (rc *responseCache) Handler(ctx *gin.Context) {
 		ctx.Writer.Write(rc.data)
 	}
 }
-func (rc *responseCache) update(update func(w io.Writer) error) {
+func (rc *responseCache) update(update func(w io.Writer) error, expires time.Time) {
 	rc.l.Lock()
 	defer rc.l.Unlock()
 
 	h := fnv.New32a()
 
+	rc.dataBuff.Reset()
 	if update(io.MultiWriter(h, rc.dataBuff)) == nil {
 		rc.data = rc.dataBuff.Bytes()
 		rc.etag = hex.EncodeToString(h.Sum(nil))
 		rc.contentLength = strconv.Itoa(len(rc.data))
+		rc.expires = expires.Format(time.RFC1123)
 	}
 }
-
-var httpTemplate = template.Must(template.ParseGlob("public/*.htm"))
 
 func setBestCdn(data testResultV2) {
 	for _, r := range data.Detail {
@@ -89,12 +87,6 @@ func setBestCdn(data testResultV2) {
 			return
 		}
 	}
-
-	httpIndex.update(
-		func(w io.Writer) error {
-			return httpTemplate.ExecuteTemplate(w, "index.htm", data)
-		},
-	)
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -119,6 +111,7 @@ func setBestCdn(data testResultV2) {
 		func(w io.Writer) error {
 			return jsoniter.NewEncoder(w).Encode(&j)
 		},
+		time.Now().Add(cfg.V.Test.RefreshInterval),
 	)
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -127,5 +120,6 @@ func setBestCdn(data testResultV2) {
 		func(w io.Writer) error {
 			return jsoniter.NewEncoder(w).Encode(&data)
 		},
+		time.Now().Add(cfg.V.Test.RefreshInterval),
 	)
 }

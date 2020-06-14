@@ -60,18 +60,13 @@ var V struct {
 		HttpTimeout   time.Duration `json:"http_timeout"`
 		HttpSpeedSize uint64        `json:"http_test_size"`
 
-		Host map[string]*HostInfo `json:"host"`
+		Host map[string][]string `json:"host"` // 검사할 때 쓸 추가 호스트
 	} `json:"test"`
 	Path struct {
 		ZoneFile string `json:"zone_file"`
 		TestSave string `json:"test_save"`
 		StatLog  string `json:"stat_log"`
 	} `json:"path"`
-}
-
-type HostInfo struct {
-	Host      []string `json:"host"` // 검사할 때 쓸 추가 호스트
-	HostCache string   `json:"host_cache"`
 }
 
 func init() {

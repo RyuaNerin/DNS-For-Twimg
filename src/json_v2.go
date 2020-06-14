@@ -17,7 +17,7 @@ import (
 
 const timeFormat = "2006-01-02 15:04 (Z07:00)"
 
-var zoneTemplate = template.Must(template.ParseFiles("./zone.tmpl"))
+var zoneTemplate = template.Must(template.ParseFiles("template/zone.tmpl"))
 
 type testResultV2 struct {
 	UpdatedAt time.Time                 `json:"updated_at"`
@@ -25,7 +25,6 @@ type testResultV2 struct {
 }
 type testResultData struct {
 	Default testResultDataCdn `json:"default"`
-	Cache   testResultDataCdn `json:"cache"`
 	Best    testResultDataCdn `json:"best"`
 }
 type testResultDataCdn struct {

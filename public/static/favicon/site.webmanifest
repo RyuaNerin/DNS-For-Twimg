@@ -1,0 +1,19 @@
+{
+    "name": "Twimg DNS",
+    "short_name": "Twimg DNS",
+    "icons": [
+        {
+            "src": "/static/favicon/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/static/favicon/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "theme_color": "#95d8f4",
+    "background_color": "#95d8f4",
+    "display": "standalone"
+}

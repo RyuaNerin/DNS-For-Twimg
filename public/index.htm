@@ -1,61 +1,409 @@
-<html>
-	<head>
+<!DOCTYPE html>
 
-	</head>
-	<body>
-		측정시간 : {{ .UpdatedAt }}
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
 
-		<h1>CDN 최적화</h1>
-		<table>
-			<thead>
-				<tr>
-					<td>Host</td>
-					<td>CDN</td>
-				</tr>
-			</thead>
-			<tbody>
-				{{ range $host, $ip := .BestCdn }}
-				<tr>
-					<td>{{ $host }}</td>
-					<td>{{ $ip }}</td>
-				</tr>
-				{{ end }}
-			</tbody>
-		</table>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
 
-		{{ range $host, $lst := .Detail }}
-		<h2> {{ $host }}</h2>
+    <link rel="publisher" href="https://twimg.ryuar.in/" />
 
-		<table>
-			<thead>
-				<tr>
-					<th>IP</th>
-					<th>위치</th>
-					<th>Ping</th>
-					<th>HTTP</th>
-					<th>Organization</th>
-					<th>Domain</th>
-				</tr>
-			</thead>
-			<tbody>
-				{{range $lst}}
-				<tr>
-					<td>
-						{{ if .DefaultCdn }}
-						<b>{{ .IP }}</b>
-						{{ else }}
-						{{ .IP }}
-						{{ end }}
-					</td>
-					<td>{{ .GeoIP }}</td>
-					<td>{{ .Ping.RttAvg }} ms</td>
-					<td>{{ .HTTP.BpsAvg }}</td>
-					<td>{{ .Organization }}</td>
-					<td>{{ .Domain }}</td>
-				</tr>
-				{{end}}
-			</tbody>
-		</table>
-		{{ end }}
-	</body>
+    <title>TWIMG-DNS</title>
+
+    <!------------------------------------------------------------------------------------------>
+    <!--[if IE]>
+      <link rel="shortcut icon" href="/static/favicon/favicon.ico" />
+    <![endif]-->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/static/favicon/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/static/favicon/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/static/favicon/favicon-16x16.png"
+    />
+    <link rel="manifest" href="/static/favicon/site.webmanifest" />
+    <link
+      rel="mask-icon"
+      href="/static/favicon/safari-pinned-tab.svg"
+      color="#5bbad5"
+    />
+    <link rel="shortcut icon" href="/static/favicon/favicon.ico" />
+    <meta name="apple-mobile-web-app-title" content="Twimg DNS" />
+    <meta name="application-name" content="Twimg DNS" />
+    <meta name="msapplication-TileColor" content="#4fbeee" />
+    <meta
+      name="msapplication-TileImage"
+      content="/static/favicon/mstile-144x144.png"
+    />
+    <meta
+      name="msapplication-config"
+      content="/static/favicon/browserconfig.xml"
+    />
+    <meta name="theme-color" content="#95d8f4" />
+
+    <!------------------------------------------------------------------------------------------>
+
+    <meta name="description" content="트위터 이미지의 로딩 속도를 개선해요" />
+
+    <meta name="author" content="RyuaNerin" />
+    <meta name="robots" content="noarchive" />
+
+    <!------------------------------------------------------------------------------------------>
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Twimg-DNS" />
+    <meta name="twitter:creator" content="@RyuaNerin" />
+    <meta name="twitter:site" content="https://twimg.ryuar.in/" />
+    <meta
+      name="twitter:image"
+      content="https://twimg.ryuar.in/static/img/img-twitter.png"
+    />
+    <meta
+      name="twitter:description"
+      content="트위터 이미지의 로딩 속도를 개선해요"
+    />
+
+    <!------------------------------------------------------------------------------------------>
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Twimg-DNS" />
+    <meta property="og:site_name" content="Twimg-DNS" />
+    <meta property="og:url" content="https://twimg.ryuar.in/" />
+    <meta
+      property="og:image"
+      content="https://twimg.ryuar.in/static/img/img-og.png"
+    />
+    <meta
+      property="og:description"
+      content="트위터 이미지의 로딩 속도를 개선해요"
+    />
+
+    <!------------------------------------------------------------------------------------------>
+
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+      integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
+    />
+    <link rel="stylesheet" href="static/index.css" />
+
+    <!------------------------------------------------------------------------------------------>
+
+    <style>
+      .bmc-button img {
+        height: 34px !important;
+        width: 35px !important;
+        margin-bottom: 1px !important;
+        box-shadow: none !important;
+        border: none !important;
+        vertical-align: middle !important;
+      }
+      .bmc-button {
+        padding: 7px 15px 7px 10px !important;
+        line-height: 35px !important;
+        height: 51px !important;
+        text-decoration: none !important;
+        display: inline-flex !important;
+        color: #ffffff !important;
+        background-color: #5f7fff !important;
+        border-radius: 5px !important;
+        border: 1px solid transparent !important;
+        padding: 7px 15px 7px 10px !important;
+        font-size: 20px !important;
+        letter-spacing: -0.08px !important;
+        box-shadow: 0px 1px 2px rgba(190, 190, 190, 0.5) !important;
+        -webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
+        margin: 0 auto !important;
+        font-family: "Lato", sans-serif !important;
+        -webkit-box-sizing: border-box !important;
+        box-sizing: border-box !important;
+      }
+      .bmc-button:hover,
+      .bmc-button:active,
+      .bmc-button:focus {
+        -webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
+        text-decoration: none !important;
+        box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
+        opacity: 0.85 !important;
+        color: #ffffff !important;
+      }
+    </style>
+  </head>
+
+  <body class="text-center">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">Twimg-DNS</a>
+      <button
+        class="navbar-toggler"
+        type="button"
+        data-toggle="collapse"
+        data-target="#navbarSupportedContent"
+        aria-controls="navbarSupportedContent"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="ml-auto mr-1"></div>
+      <div
+        class="collapse navbar-collapse flex-grow-0"
+        id="navbarSupportedContent"
+      >
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="#notice">안내</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#server">적용 전/후 비교</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#manual">적용하기</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <header class="d-flex align-items-center justify-content-center">
+      <div>
+        <div class="icon mx-auto"></div>
+        <h1 class="font-weight-bolder hr">TWIMG-DNS</h1>
+        <p class="h4 d-sm-none">
+          트위터 이미지의 <br />
+          로딩 속도 개선를 개선해요
+        </p>
+        <p class="h4 d-none d-sm-block">트위터 이미지의 로딩 속도를 개선해요</p>
+
+        <p id="with-option" class="mt-3 font-weight-bold" hidden>
+          - TWIMG-DNS 와 함께하고 있어요! -
+        </p>
+      </div>
+    </header>
+
+    <section id="notice" class="py-4">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-md-8">
+            <h2 class="hr">안내</h2>
+          </div>
+        </div>
+        <div class="row justify-content-center">
+          <div class="col col-md-8">
+            <p>Twimg-DNS 와 함께 트위터 이미지 로딩속도를 개선해요</p>
+
+            <hr />
+
+            <p>이 서비스는 <strong>개발자의 사비</strong>를 들여 운영해요</p>
+            <p>때문에 언제 어떻게 서비스가 종료될 지 몰라요</p>
+
+            <hr />
+
+            <h4>만든이</h4>
+            <a href="https://ryuar.in" target="_blank" class="d-inline-block">
+              <img
+                class="d-inline profile-icon mt-3 mb-2"
+                src="/static/img/profile/ryuanerin.png"
+              />
+              <p><strong>RyuaNerin</strong></p>
+            </a>
+
+            <div>
+              <link
+                href="https://fonts.googleapis.com/css?family=Lato&subset=latin,latin-ext"
+                rel="stylesheet"
+              />
+              <a
+                class="bmc-button"
+                target="_blank"
+                href="https://www.buymeacoffee.com/RyuaNerin"
+              >
+                <img
+                  src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg"
+                  alt="커피 한 잔 사주기"
+                />
+                <span style="margin-left: 5px; font-size: 19px !important;">
+                  커피 한 잔 사주기
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="server" class="py-4">
+      <div id="serverDiv" class="container">
+        <div class="row justify-content-center">
+          <div class="col-md-8">
+            <h2 class="hr">적용 전/후 비교</h2>
+
+            <p>한국 기준이에요. 해외의 경우 해당되지 않아요</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="manual" class="py-4">
+      <div class="container">
+        <div class="row justify-content-center">
+          <div class="col-md-8">
+            <h2 class="hr">적용하기</h2>
+          </div>
+        </div>
+        <div class="row justify-content-center">
+          <div class="col-md-7 text-left">
+            <p class="text-center h3">
+              <strong>
+                DNS 를 <code>141.164.54.111</code>로 설정해주세요.
+              </strong>
+            </p>
+
+            <hr />
+            <ul>
+              <li>
+                전 세계 각지의 트위터 이미지 서버중 제일 빠른 서버를 찾아
+                연결해요
+              </li>
+              <li>일정 시간마다 갱신해서 빠른 속도를 유지해요</li>
+              <li>
+                측정 결과는 위 <a href="#server">적용 전/후 비교</a> 에서 볼 수
+                있어요
+              </li>
+            </ul>
+
+            <hr />
+            <h4 class="text-center">수동적용</h4>
+            <div class="text-center">
+              <p class="text-center">
+                <strong>
+                  영상에 적인 IP 가 아니라 <code>141.164.54.111</code> 을
+                  입력해야해요.
+                </strong>
+              </p>
+              <p>
+                설정 후에 재부팅 해주시는 것을 권장해요
+              </p>
+
+              <div class="os-badge">
+                <a
+                  class="fab fa-windows"
+                  href="https://youtu.be/eUdd0rKnDoQ"
+                  target="_blank"
+                >
+                </a>
+
+                <a
+                  class="fab fa-apple"
+                  href="https://youtu.be/W87FEMm7Uj0"
+                  target="_blank"
+                >
+                </a>
+
+                <a
+                  class="fab fa-android"
+                  href="https://jun7222.tistory.com/423"
+                  target="_blank"
+                >
+                </a>
+              </div>
+
+              <p>
+                수동적용 후에 이 페이지에 다시 접속해보세요
+              </p>
+              <p>
+                <strong>TWIMG-DNS 와 함께하고 있어요!</strong> 문구를 볼 수 있을
+                거에요!
+              </p>
+            </div>
+
+            <hr />
+            <h4 class="text-center">공식 지원 앱</h4>
+            <div class="text-center">
+              <div class="os-badge2">
+                <a
+                  href="https://play.google.com/store/apps/details?id=com.sokcuri.twimgspeedproxy&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1&pcampaignid=pcampaignidMKT-Other-global-all-co-prtnr-py-PartBadge-Mar2515-1"
+                  target="_blank"
+                  ><img
+                    alt="다운로드하기 Google Play"
+                    src="https://play.google.com/intl/en_us/badges/static/images/badges/ko_badge_web_generic.png"
+                /></a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <footer class="py-2">
+        <div class="container">
+          <div class="row justify-content-center">
+            <div class="col col-md-8">
+              <strong>
+                Designed by
+                <a href="https://ryuar.in/" target="_blank">RyuaNerin</a>
+              </strong>
+              with <a href="https://getbootstrap.com/">Bootstrap</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </section>
+
+    <!-- Bootstrap -->
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.js"
+      integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"
+      integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"
+      integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI"
+      crossorigin="anonymous"
+    ></script>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"
+      integrity="sha256-R4pqcOYV8lt7snxMQO/HSbVCFRPMdrhAFMH+vr9giYI="
+      crossorigin="anonymous"
+    ></script>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=UA-51806220-7"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "UA-51806220-7");
+    </script>
+    <!-- data -->
+    <script src="static/index.js"></script>
+  </body>
 </html>

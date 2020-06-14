@@ -106,13 +106,12 @@ func (ct *cdnTest) do() {
 		td := cdnTestHostData{
 			p:            ct,
 			host:         host,
-			hostInfo:     hostInfo,
+			hostList:     hostInfo,
 			hostTestData: cfg.TestFile[host],
 		}
 		td.do()
 
 		log.Printf("[%s] Best    : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Best.Addr, td.result.Best.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Best.Speed)))
-		log.Printf("[%s] Cache   : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Cache.Addr, td.result.Cache.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Cache.Speed)))
 		log.Printf("[%s] Default : %15s / ping : %6.2f ms / http : %7s/s\n", host, td.result.Default.Addr, td.result.Default.Ping.Seconds()*1000, humanize.IBytes(uint64(td.result.Default.Speed)))
 
 		result.Detail[host] = td.result
@@ -157,7 +156,7 @@ type cdnTestHostData struct {
 	p *cdnTest
 
 	host         string
-	hostInfo     *cfg.HostInfo
+	hostList     []string
 	hostTestData cfg.TestDataMap
 
 	dnsClient dns.Client
@@ -178,7 +177,6 @@ type cdnTestHostDataResult struct {
 	httpAve float64
 
 	isDefault bool
-	isCache   bool
 }
 
 func (td *cdnTestHostData) do() {
@@ -197,15 +195,7 @@ func (td *cdnTestHostData) do() {
 		}
 	}
 
-	if ip, _ := resolve(cfg.V.DNS.NameServerDefault, td.hostInfo.HostCache); ip != nil {
-		td.cdnAddrList[ip2int(ip)] = &cdnTestHostDataResult{
-			addr:       ip.String(),
-			nameServer: cfg.V.DNS.NameServerDefault,
-			isCache:    true,
-		}
-	}
-
-	for _, host := range td.hostInfo.Host {
+	for _, host := range td.hostList {
 		td.getCdnAddrFromNameServer(host)
 		td.getCdnAddrFromThreatCrowd(host)
 	}
@@ -225,17 +215,9 @@ func (td *cdnTestHostData) do() {
 
 	var maxHttpAve float64
 	for _, data := range td.cdnAddrList {
-		if maxHttpAve < data.httpAve && !data.isCache {
+		if maxHttpAve < data.httpAve {
 			maxHttpAve = data.httpAve
 			td.result.Best = testResultDataCdn{
-				Addr:  data.addr,
-				Ping:  data.pingAve,
-				Speed: data.httpAve,
-			}
-		}
-
-		if data.isCache {
-			td.result.Cache = testResultDataCdn{
 				Addr:  data.addr,
 				Ping:  data.pingAve,
 				Speed: data.httpAve,
@@ -396,7 +378,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 	pingAve := time.Duration(td.pingSum/int64(len(td.cdnAddrList))) * time.Microsecond * 3 / 2
 
 	for k, data := range td.cdnAddrList {
-		if data.isDefault || data.isCache {
+		if data.isDefault {
 			continue
 		}
 		if data.pingAve == 0 || data.pingAve > pingAve {
@@ -454,8 +436,6 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				return 0
 			}
 
-			httpClient.Transport.(*http.Transport).Clone()
-
 			wt, err := io.Copy(h, res.Body)
 
 			if err != nil && err != io.EOF {
@@ -484,9 +464,17 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			defer w.Done()
 
 			client := newHttpClient()
+			var timeout time.Duration
 
 			for cdnData := range chCdnData {
+				if cdnData.isDefault {
+					timeout = client.Timeout
+					client.Timeout = 0
+				}
 				cdnData.httpAve = Tf(client, cdnData)
+				if cdnData.isDefault {
+					client.Timeout = timeout
+				}
 			}
 		}()
 	}
@@ -499,7 +487,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 	w.Wait()
 
 	for k, data := range td.cdnAddrList {
-		if data.isDefault || data.isCache {
+		if data.isDefault {
 			continue
 		}
 		if data.httpAve == 0 {
