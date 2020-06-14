@@ -75,7 +75,7 @@ func (data testResultV2) save() {
 		Serial string
 		Data   testResultV2
 	}
-	td.Serial = time.Now().Format("200601021504")
+	td.Serial = time.Now().Format("0601021504")
 	td.Data = data
 
 	err = zoneTemplate.Execute(bw, &td)
