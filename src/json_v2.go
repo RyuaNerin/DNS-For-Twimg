@@ -124,16 +124,15 @@ func init() {
 	)
 
 	fs, err := os.Open(cfg.V.Path.TestSave)
-	if err != nil {
-		panic(err)
-	}
-	defer fs.Close()
+	if err == nil {
+		defer fs.Close()
 
-	var data testResultV2
-	err = jsoniter.NewDecoder(fs).Decode(&data)
-	if err != nil {
-		panic(err)
-	}
+		var data testResultV2
+		err = jsoniter.NewDecoder(fs).Decode(&data)
+		if err != nil {
+			panic(err)
+		}
 
-	setBestCdn(data)
+		setBestCdn(data)
+	}
 }
