@@ -10,4 +10,5 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sparrc/go-ping v0.0.0-20190613174326-4e5b6552494c
 	github.com/getsentry/sentry-go v0.6.1
+	github.com/gin-contrib/pprof v1.3.0
 )

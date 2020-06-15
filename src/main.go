@@ -14,6 +14,7 @@ import (
 	"twimgdns/src/cfg"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 )
@@ -23,7 +24,7 @@ func Main() {
 
 	router.Use(handlePanic)
 
-	router.Any("/debug/pprof/", gin.WrapH(http.DefaultServeMux))
+	pprof.Register(router)
 
 	router.GET("/json", httpJson.Handler)
 	router.GET("/json.2", httpJson2.Handler)
