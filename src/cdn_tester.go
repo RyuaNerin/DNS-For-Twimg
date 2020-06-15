@@ -375,7 +375,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 상태 나쁜 CDN 제거
-	pingAve := time.Duration(td.pingSum/int64(len(td.cdnAddrList))) * time.Microsecond * 3 / 2
+	pingAve := time.Duration(td.pingSum/int64(len(td.cdnAddrList))) * time.Microsecond / 2
 
 	for k, data := range td.cdnAddrList {
 		if data.isDefault {
