@@ -9,8 +9,6 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
-	"time"
-	"twimgdns/src/cfg"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -20,7 +18,6 @@ type responseCache struct {
 	l sync.RWMutex
 
 	header        map[string]string
-	expires       string
 	etag          string
 	contentLength string
 
@@ -52,7 +49,6 @@ func (rc *responseCache) Handler(ctx *gin.Context) {
 	if rc.data == nil {
 		ctx.Status(http.StatusNoContent)
 	} else {
-		h.Set("Expires", rc.expires)
 		h.Set("ETag", rc.etag)
 
 		if etag := ctx.GetHeader("If-None-Match"); etag == rc.etag {
@@ -66,7 +62,7 @@ func (rc *responseCache) Handler(ctx *gin.Context) {
 		ctx.Writer.Write(rc.data)
 	}
 }
-func (rc *responseCache) update(update func(w io.Writer) error, expires time.Time) {
+func (rc *responseCache) update(update func(w io.Writer) error) {
 	rc.l.Lock()
 	defer rc.l.Unlock()
 
@@ -77,7 +73,6 @@ func (rc *responseCache) update(update func(w io.Writer) error, expires time.Tim
 		rc.data = rc.dataBuff.Bytes()
 		rc.etag = hex.EncodeToString(h.Sum(nil))
 		rc.contentLength = strconv.Itoa(len(rc.data))
-		rc.expires = expires.Format(time.RFC1123)
 	}
 }
 
@@ -111,7 +106,6 @@ func setBestCdn(data testResultV2) {
 		func(w io.Writer) error {
 			return jsoniter.NewEncoder(w).Encode(&j)
 		},
-		time.Now().Add(cfg.V.Test.RefreshInterval),
 	)
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,6 +114,5 @@ func setBestCdn(data testResultV2) {
 		func(w io.Writer) error {
 			return jsoniter.NewEncoder(w).Encode(&data)
 		},
-		time.Now().Add(cfg.V.Test.RefreshInterval),
 	)
 }
