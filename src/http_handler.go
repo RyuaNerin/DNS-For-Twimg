@@ -50,6 +50,8 @@ func (rc *responseCache) Handler(ctx *gin.Context) {
 		ctx.Status(http.StatusNoContent)
 	} else {
 		h.Set("ETag", rc.etag)
+		h.Set("Content-Type", "application/json; charset=utf-8")
+		h.Set("Cache-Control", "max-age=300")
 
 		if etag := ctx.GetHeader("If-None-Match"); etag == rc.etag {
 			ctx.Status(http.StatusNotModified)
