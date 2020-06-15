@@ -185,7 +185,7 @@ $(document).ready(() => {
 			if (r.status == 200) {
 				switch (r.responseText) {
 					case "WITH TWIMG-DNS":
-						$("#with-option").removeAttr("hidden");
+						$("#with-option").removeClass("invisible");
 						break;
 				}
 			}

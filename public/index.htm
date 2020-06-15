@@ -105,48 +105,6 @@
       href="https://use.fontawesome.com/releases/v5.8.2/css/all.css"
     />
     <link rel="stylesheet" href="static/index.css" />
-
-    <!------------------------------------------------------------------------------------------>
-
-    <style>
-      .bmc-button img {
-        height: 34px !important;
-        width: 35px !important;
-        margin-bottom: 1px !important;
-        box-shadow: none !important;
-        border: none !important;
-        vertical-align: middle !important;
-      }
-      .bmc-button {
-        padding: 7px 15px 7px 10px !important;
-        line-height: 35px !important;
-        height: 51px !important;
-        text-decoration: none !important;
-        display: inline-flex !important;
-        color: #ffffff !important;
-        background-color: #5f7fff !important;
-        border-radius: 5px !important;
-        border: 1px solid transparent !important;
-        padding: 7px 15px 7px 10px !important;
-        font-size: 20px !important;
-        letter-spacing: -0.08px !important;
-        box-shadow: 0px 1px 2px rgba(190, 190, 190, 0.5) !important;
-        -webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
-        margin: 0 auto !important;
-        font-family: "Lato", sans-serif !important;
-        -webkit-box-sizing: border-box !important;
-        box-sizing: border-box !important;
-      }
-      .bmc-button:hover,
-      .bmc-button:active,
-      .bmc-button:focus {
-        -webkit-box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
-        text-decoration: none !important;
-        box-shadow: 0px 1px 2px 2px rgba(190, 190, 190, 0.5) !important;
-        opacity: 0.85 !important;
-        color: #ffffff !important;
-      }
-    </style>
   </head>
 
   <body class="text-center">
@@ -184,15 +142,16 @@
 
     <header class="d-flex align-items-center justify-content-center">
       <div>
-        <div class="icon mx-auto"></div>
+        <div class="icon mx-auto img-fluid"></div>
+
         <h1 class="font-weight-bolder hr">TWIMG-DNS</h1>
         <p class="h4 d-sm-none">
           트위터 이미지의 <br />
-          로딩 속도 개선를 개선해요
+          로딩 속도를 개선해요
         </p>
         <p class="h4 d-none d-sm-block">트위터 이미지의 로딩 속도를 개선해요</p>
 
-        <p id="with-option" class="mt-3 font-weight-bold" hidden>
+        <p id="with-option" class="mt-3 font-weight-bold invisible">
           - TWIMG-DNS 와 함께하고 있어요! -
         </p>
       </div>
@@ -226,23 +185,14 @@
             </a>
 
             <div>
-              <link
-                href="https://fonts.googleapis.com/css?family=Lato&subset=latin,latin-ext"
-                rel="stylesheet"
-              />
-              <a
-                class="bmc-button"
-                target="_blank"
-                href="https://www.buymeacoffee.com/RyuaNerin"
+              <button
+                type="button"
+                class="btn btn-outline-primary font-weight-bold"
+                data-toggle="modal"
+                data-target="#kakaoPayModal"
               >
-                <img
-                  src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg"
-                  alt="커피 한 잔 사주기"
-                />
-                <span style="margin-left: 5px; font-size: 19px !important;">
-                  커피 한 잔 사주기
-                </span>
-              </a>
+                커피 한 잔 사주기
+              </button>
             </div>
           </div>
         </div>
@@ -290,7 +240,7 @@
             </ul>
 
             <hr />
-            <h4 class="text-center">수동적용</h4>
+            <h4 class="text-center">적용 방법</h4>
             <div class="text-center">
               <p class="text-center">
                 <strong>
@@ -367,6 +317,36 @@
         </div>
       </footer>
     </section>
+
+    <div
+      class="modal fade"
+      id="kakaoPayModal"
+      tabindex="-1"
+      role="dialog"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-body">
+            <a
+              href="https://qr.kakaopay.com/2810060111876953900019325dc03384"
+              target="_blank"
+            >
+              <img class="kakao-pay" src="/static/img/kakao-pay.jpg" />
+            </a>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-dismiss="modal"
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Bootstrap -->
     <script

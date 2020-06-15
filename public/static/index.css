@@ -55,9 +55,17 @@ header {
 header .icon {
 	background-image: url("/static/img/img.svg");
 	background-size: contain;
-	width: 384px;
-	height: 384px;
-	margin-bottom: -32px;
+
+	width: 90%;
+	max-width: 384px;
+
+	margin-bottom: -10%;
+}
+
+header .icon:after {
+	content: "";
+	display: block;
+	padding-bottom: 100%;
 }
 
 .hr {
@@ -68,6 +76,10 @@ header .icon {
 	display: block;
 	border-top: 3px solid #0b3446;
 	margin-bottom: 0.25em;
+}
+
+header .hr:after {
+	border-top: 3px solid #f0f6ff;
 }
 
 .profile-icon {
@@ -98,4 +110,11 @@ section:nth-child(odd) {
 .os-badge2 a img {
 	font-size: 6em;
 	height: 1em;
+}
+
+.modal-body {
+	padding: 2em;
+}
+img.kakao-pay {
+	width: 100%;
 }
