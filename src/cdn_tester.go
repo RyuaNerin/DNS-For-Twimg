@@ -22,7 +22,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/miekg/dns"
-	"github.com/sparrc/go-ping"
 )
 
 const (
@@ -164,7 +163,8 @@ type cdnTestHostData struct {
 	cdnAddrListLock sync.Mutex
 	cdnAddrList     map[uint32]*cdnTestHostDataResult
 
-	pingSum int64 // Microseconds
+	pingSum      int64 // Microseconds
+	pingSumCount int64
 
 	result testResultData
 }
@@ -343,25 +343,26 @@ func (td *cdnTestHostData) pingAndFilter() {
 			defer w.Done()
 
 			for cdnData := range chCdnData {
-				pinger, err := ping.NewPinger(cdnData.addr)
-				if err != nil {
-					sentry.CaptureException(err)
-					continue
+				avg := time.Duration(0)
+				c := 0
+				for seq := 0; seq < cfg.V.Test.PingCount; seq++ {
+					dr, ok := ping(cdnData.addr, seq, cfg.V.Test.PingTimeout)
+					if !ok {
+						break
+					}
+
+					avg += dr
+					c++
 				}
-				pinger.SetPrivileged(true)
-
-				pinger.Timeout = cfg.V.Test.PingTimeout
-				pinger.Count = cfg.V.Test.PingCount
-
-				pinger.Run()
-
-				stats := pinger.Statistics()
-				if !cdnData.isDefault && (stats.PacketsRecv != cfg.V.Test.PingCount || stats.PacketsSent != cfg.V.Test.PingCount) {
-					continue
+				if c != cfg.V.Test.PingCount {
+					break
 				}
 
-				cdnData.pingAve = stats.AvgRtt
-				atomic.AddInt64(&td.pingSum, stats.AvgRtt.Microseconds())
+				avg = time.Duration(int64(avg) / int64(cfg.V.Test.PingCount))
+
+				cdnData.pingAve = avg
+				atomic.AddInt64(&td.pingSum, avg.Microseconds())
+				atomic.AddInt64(&td.pingSumCount, 1)
 			}
 		}()
 	}
@@ -375,7 +376,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 상태 나쁜 CDN 제거
-	pingAve := time.Duration(td.pingSum/int64(len(td.cdnAddrList))) * time.Microsecond / 2
+	pingAve := time.Duration(td.pingSum/int64(td.pingSumCount)) * time.Microsecond
 
 	for k, data := range td.cdnAddrList {
 		if data.isDefault {
