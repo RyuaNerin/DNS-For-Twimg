@@ -19,6 +19,7 @@ import (
 	"twimgdns/src/common"
 	"twimgdns/src/common/cfg"
 
+	"github.com/asmpro/go-ping"
 	"github.com/dustin/go-humanize"
 	"github.com/getsentry/sentry-go"
 	jsoniter "github.com/json-iterator/go"
@@ -329,25 +330,20 @@ func (td *cdnTestHostData) pingAndFilter() {
 			defer w.Done()
 
 			for cdnData := range chCdnData {
-				avg := time.Duration(0)
-				c := 0
-				for seq := 0; seq < cfg.V.Test.PingCount; seq++ {
-					dr, ok := ping(cdnData.addr, seq, cfg.V.Test.PingTimeout)
-					if !ok {
-						break
-					}
+				pinger, _ := ping.NewPinger(cdnData.addr)
+				pinger.Count = cfg.V.Test.PingCount
+				pinger.Timeout = cfg.V.Test.PingTimeout
 
-					avg += dr
-					c++
-				}
-				if c != cfg.V.Test.PingCount {
-					break
+				pinger.SetPrivileged(true)
+				pinger.Run()
+
+				stats := pinger.Statistics()
+				if !cdnData.isDefault && (stats.PacketsRecv != cfg.V.Test.PingCount || stats.PacketsSent != cfg.V.Test.PingCount) {
+					continue
 				}
 
-				avg = time.Duration(int64(avg) / int64(cfg.V.Test.PingCount))
-
-				cdnData.pingAve = avg
-				atomic.AddInt64(&td.pingSum, int64(avg))
+				cdnData.pingAve = stats.AvgRtt
+				atomic.AddInt64(&td.pingSum, int64(stats.AvgRtt))
 				atomic.AddInt64(&td.pingSumCount, 1)
 
 				common.Verbose.Printf("[%s] ping %15s : %8.2f ms\n", td.host, cdnData.addr, float64(cdnData.pingAve)/float64(time.Millisecond))
