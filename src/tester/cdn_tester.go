@@ -349,6 +349,8 @@ func (td *cdnTestHostData) pingAndFilter() {
 				cdnData.pingAve = avg
 				atomic.AddInt64(&td.pingSum, int64(avg))
 				atomic.AddInt64(&td.pingSumCount, 1)
+
+				common.Verbose.Printf("[%s] ping %15s : %8.2f ms\n", td.host, cdnData.addr, float64(cdnData.pingAve)/float64(time.Millisecond))
 			}
 		}()
 	}
@@ -369,8 +371,6 @@ func (td *cdnTestHostData) pingAndFilter() {
 			delete(td.cdnAddrList, k)
 			continue
 		}
-
-		common.Verbose.Printf("[%s] ping %15s : %8.2f ms\n", td.host, data.addr, float64(data.pingAve)/float64(time.Millisecond))
 	}
 }
 
@@ -457,6 +457,9 @@ func (td *cdnTestHostData) httpSpeedTest() {
 					client.Timeout = 0
 				}
 				cdnData.httpAve = Tf(client, cdnData)
+				if cdnData.httpAve != 0 {
+					common.Verbose.Printf("[%s] http %15s : %8s/s\n", td.host, cdnData.addr, humanize.IBytes(uint64(cdnData.httpAve)))
+				}
 				if cdnData.isDefault {
 					client.Timeout = timeout
 				}
@@ -476,7 +479,5 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			delete(td.cdnAddrList, k)
 			continue
 		}
-
-		common.Verbose.Printf("[%s] http %15s : %8s/s\n", td.host, data.addr, humanize.IBytes(uint64(data.httpAve)))
 	}
 }
