@@ -128,7 +128,7 @@
 
 		"worker" : {
 			"resolve" : 32,
-			"ping" : 32,
+			"ping" : 4,
 			"http" : 2
 		},
 		
