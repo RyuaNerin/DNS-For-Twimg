@@ -5,13 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-			"name": "go debug",
+			"name": "go debug (tester)",
 			"type": "go",
 			"request": "launch",
 			"mode": "auto",
 			"program": "${workspaceFolder}",
 			"env": {},
-			"args": [ "--server", "--verbose" ],
+			"args": [ "--tester", "--verbose" ],
+        },
+        {
+			"name": "go debug (server)",
+			"type": "go",
+			"request": "launch",
+			"mode": "auto",
+			"program": "${workspaceFolder}",
+			"env": {},
+			"args": [ "--serverZ", "--verbose" ],
         },
         {
 			"name": "hash",
