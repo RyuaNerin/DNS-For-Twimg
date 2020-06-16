@@ -1,4 +1,4 @@
-package src
+package server
 
 import (
 	"bytes"
@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+
+	"twimgdns/src/common"
 
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
@@ -78,7 +80,7 @@ func (rc *responseCache) update(update func(w io.Writer) error) {
 	}
 }
 
-func setBestCdn(data testResultV2) {
+func setHttpJsonData(data common.Result) {
 	for _, r := range data.Detail {
 		if r.Best.Addr == "" {
 			return
@@ -87,9 +89,9 @@ func setBestCdn(data testResultV2) {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	j := make(testResultV1, len(data.Detail))
+	v1 := make(common.ResultV1, len(data.Detail))
 	for host, v := range data.Detail {
-		var d testResultV1Data
+		var d common.ResultV1Data
 		d.Ip = v.Best.Addr
 
 		d.HTTPSuccess = true
@@ -102,11 +104,11 @@ func setBestCdn(data testResultV2) {
 		d.Ping.RttMin = d.Ping.RttAvg
 		d.Ping.RttMax = d.Ping.RttAvg
 
-		j[host] = []testResultV1Data{d}
+		v1[host] = []common.ResultV1Data{d}
 	}
 	httpJson.update(
 		func(w io.Writer) error {
-			return jsoniter.NewEncoder(w).Encode(&j)
+			return jsoniter.NewEncoder(w).Encode(&v1)
 		},
 	)
 

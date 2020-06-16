@@ -1,4 +1,4 @@
-package src
+package tester
 
 import (
 	"net"
@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"twimgdns/src/cfg"
+	"twimgdns/src/common/cfg"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/miekg/dns"

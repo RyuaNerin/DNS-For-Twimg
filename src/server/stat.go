@@ -1,4 +1,4 @@
-package src
+package server
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"twimgdns/src/cfg"
+	"twimgdns/src/common/cfg"
 )
 
 var (

@@ -1,4 +1,4 @@
-package src
+package tester
 
 import (
 	"bytes"
@@ -16,7 +16,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"twimgdns/src/cfg"
+	"twimgdns/src/common"
+	"twimgdns/src/common/cfg"
 
 	"github.com/dustin/go-humanize"
 	"github.com/getsentry/sentry-go"
@@ -50,20 +51,6 @@ func newHttpClient() *http.Client {
 	}
 }
 
-func init() {
-	go func() {
-		waitChan := make(chan struct{}, 1)
-		waitChan <- struct{}{}
-
-		for {
-			var ct cdnTest
-			ct.do()
-
-			<-time.After(time.Until(time.Now().Truncate(cfg.V.Test.RefreshInterval).Add(cfg.V.Test.RefreshInterval)))
-		}
-	}()
-}
-
 func ip2int(ip net.IP) uint32 {
 	if len(ip) == net.IPv4len {
 		binary.BigEndian.Uint32(ip)
@@ -79,8 +66,8 @@ type cdnTest struct {
 func (ct *cdnTest) do() {
 	ct.nameServerMap = make(map[uint32]struct{})
 
-	result := testResultV2{
-		Detail: make(map[string]testResultData, 2),
+	result := common.Result{
+		Detail: make(map[string]common.ResultData, 2),
 	}
 
 	for _, namerserverList := range cfg.V.DNS.NameServer {
@@ -99,7 +86,7 @@ func (ct *cdnTest) do() {
 	ct.getPublicDNSServerList("https://public-dns.info/nameserver/kr.json")
 	ct.getPublicDNSServerList("https://public-dns.info/nameserver/jp.json")
 
-	logV.Printf("nameserver Count : %d\n", len(ct.nameServer))
+	common.Verbose.Printf("nameserver Count : %d\n", len(ct.nameServer))
 
 	for host, hostInfo := range cfg.V.Test.Host {
 		td := cdnTestHostData{
@@ -118,8 +105,7 @@ func (ct *cdnTest) do() {
 
 	result.UpdatedAt = time.Now()
 
-	setBestCdn(result)
-	result.save()
+	go updateServer(result)
 }
 
 func (ct *cdnTest) getPublicDNSServerList(url string) {
@@ -166,7 +152,7 @@ type cdnTestHostData struct {
 	pingSum      int64 // Microseconds
 	pingSumCount int64
 
-	result testResultData
+	result common.ResultData
 }
 
 type cdnTestHostDataResult struct {
@@ -199,17 +185,17 @@ func (td *cdnTestHostData) do() {
 		td.getCdnAddrFromNameServer(host)
 		td.getCdnAddrFromThreatCrowd(host)
 	}
-	logV.Printf("[%s] cdn count : %d\n", td.host, len(td.cdnAddrList))
+	common.Verbose.Printf("[%s] cdn count : %d\n", td.host, len(td.cdnAddrList))
 
 	//////////////////////////////////////////////////
 
-	logV.Printf("[%s] ping start\n", td.host)
+	common.Verbose.Printf("[%s] ping start\n", td.host)
 	td.pingAndFilter()
-	logV.Printf("[%s] ping done (%d)\n", td.host, len(td.cdnAddrList))
+	common.Verbose.Printf("[%s] ping done (%d)\n", td.host, len(td.cdnAddrList))
 
-	logV.Printf("[%s] http start\n", td.host)
+	common.Verbose.Printf("[%s] http start\n", td.host)
 	td.httpSpeedTest()
-	logV.Printf("[%s] http done (%d)\n", td.host, len(td.cdnAddrList))
+	common.Verbose.Printf("[%s] http done (%d)\n", td.host, len(td.cdnAddrList))
 
 	//////////////////////////////////////////////////
 
@@ -217,7 +203,7 @@ func (td *cdnTestHostData) do() {
 	for _, data := range td.cdnAddrList {
 		if maxHttpAve < data.httpAve {
 			maxHttpAve = data.httpAve
-			td.result.Best = testResultDataCdn{
+			td.result.Best = common.ResultDataCdn{
 				Addr:  data.addr,
 				Ping:  data.pingAve,
 				Speed: data.httpAve,
@@ -225,7 +211,7 @@ func (td *cdnTestHostData) do() {
 		}
 
 		if data.isDefault {
-			td.result.Default = testResultDataCdn{
+			td.result.Default = common.ResultDataCdn{
 				Addr:  data.addr,
 				Ping:  data.pingAve,
 				Speed: data.httpAve,
@@ -361,7 +347,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 				avg = time.Duration(int64(avg) / int64(cfg.V.Test.PingCount))
 
 				cdnData.pingAve = avg
-				atomic.AddInt64(&td.pingSum, avg.Microseconds())
+				atomic.AddInt64(&td.pingSum, int64(avg))
 				atomic.AddInt64(&td.pingSumCount, 1)
 			}
 		}()
@@ -376,37 +362,36 @@ func (td *cdnTestHostData) pingAndFilter() {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 상태 나쁜 CDN 제거
-	pingAve := time.Duration(td.pingSum/int64(td.pingSumCount)) * time.Microsecond
+	pingAve := time.Duration(td.pingSum / int64(td.pingSumCount))
 
 	for k, data := range td.cdnAddrList {
-		if data.isDefault {
+		if !data.isDefault && (data.pingAve == 0 || data.pingAve > pingAve) {
+			delete(td.cdnAddrList, k)
 			continue
 		}
-		if data.pingAve == 0 || data.pingAve > pingAve {
-			delete(td.cdnAddrList, k)
-		}
+
+		common.Verbose.Printf("[%s] ping %15s : %8.2f ms\n", td.host, data.addr, float64(data.pingAve)/float64(time.Millisecond))
 	}
 }
 
 func (td *cdnTestHostData) httpSpeedTest() {
+	type testData struct {
+		url  string
+		hash []byte
+	}
+	testDataList := make([]testData, 0, len(td.hostTestData))
+	for url, hash := range td.hostTestData {
+		testDataList = append(
+			testDataList,
+			testData{
+				url:  url,
+				hash: hash,
+			},
+		)
+	}
+
 	Tf := func(client *http.Client, cdnData *cdnTestHostDataResult) float64 {
-		type testData struct {
-			url  string
-			hash []byte
-		}
-
 		h := sha256.New()
-
-		testDataList := make([]testData, 0, len(td.hostTestData))
-		for url, hash := range td.hostTestData {
-			testDataList = append(
-				testDataList,
-				testData{
-					url:  url,
-					hash: hash,
-				},
-			)
-		}
 
 		tr := client.Transport.(*http.Transport)
 		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -419,8 +404,6 @@ func (td *cdnTestHostData) httpSpeedTest() {
 
 		for downloaded < cfg.V.Test.HttpSpeedSize {
 			d := testDataList[rand.Intn(len(testDataList))]
-
-			h.Reset()
 
 			req, err := http.NewRequest("GET", d.url, nil)
 			if err != nil {
@@ -437,6 +420,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				return 0
 			}
 
+			h.Reset()
 			wt, err := io.Copy(h, res.Body)
 
 			if err != nil && err != io.EOF {
@@ -488,11 +472,11 @@ func (td *cdnTestHostData) httpSpeedTest() {
 	w.Wait()
 
 	for k, data := range td.cdnAddrList {
-		if data.isDefault {
+		if !data.isDefault && (data.httpAve == 0) {
+			delete(td.cdnAddrList, k)
 			continue
 		}
-		if data.httpAve == 0 {
-			delete(td.cdnAddrList, k)
-		}
+
+		common.Verbose.Printf("[%s] http %15s : %8s/s\n", td.host, data.addr, humanize.IBytes(uint64(data.httpAve)))
 	}
 }

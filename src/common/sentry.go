@@ -1,4 +1,4 @@
-package cfg
+package common
 
 import (
 	"net/http"

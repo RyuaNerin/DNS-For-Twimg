@@ -1,8 +1,8 @@
-package src
+package common
 
-type testResultV1 map[string][]testResultV1Data
+type ResultV1 map[string][]ResultV1Data
 
-type testResultV1Data struct {
+type ResultV1Data struct {
 	Ip         string `json:"ip"`
 	DefaultCdn bool   `json:"default_cdn"`
 	GeoIp      struct {

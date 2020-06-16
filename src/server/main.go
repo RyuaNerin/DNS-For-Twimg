@@ -1,4 +1,4 @@
-package src
+package server
 
 import (
 	"fmt"
@@ -11,7 +11,9 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"twimgdns/src/cfg"
+
+	"twimgdns/src/common"
+	"twimgdns/src/common/cfg"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-contrib/pprof"
@@ -28,6 +30,8 @@ func Main() {
 
 	router.GET("/json", httpJson.Handler)
 	router.GET("/json.2", httpJson2.Handler)
+
+	router.POST(common.UpdatePath, handleUpdateNewData)
 
 	router.Static("/static/", "public/static/")
 	router.GET("/", func(ctx *gin.Context) {

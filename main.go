@@ -1,7 +1,21 @@
 package main
 
-import "twimgdns/src"
+import (
+	"os"
+	"strings"
+
+	"twimgdns/src/server"
+	"twimgdns/src/tester"
+)
 
 func main() {
-	src.Main()
+	for _, arg := range os.Args {
+		switch {
+		case strings.EqualFold(arg, "--server"):
+			server.Main()
+
+		case strings.EqualFold(arg, "--tester"):
+			tester.Main()
+		}
+	}
 }
