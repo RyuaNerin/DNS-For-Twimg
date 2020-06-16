@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"io/ioutil"
 	"math/rand"
+	"strings"
 )
 
 var UpdateHeaderValue string
@@ -11,7 +12,8 @@ var UpdateHeaderValue string
 func init() {
 	pw, err := ioutil.ReadFile("config.auth")
 	if err == nil {
-		UpdateHeaderValue = string(pw)
+		UpdateHeaderValue = strings.TrimSpace(string(pw))
+
 	} else {
 		pw := make([]byte, 32)
 		rand.Read(pw)
