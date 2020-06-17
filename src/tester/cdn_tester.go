@@ -298,12 +298,7 @@ func (td *cdnTestHostData) getCdnAddrFromThreatCrowd(host string) {
 
 	for _, resolution := range jd.Resolutions {
 		lastResolved, err := time.Parse("2006-01-02", resolution.LastResolved)
-		if err != nil {
-			sentry.CaptureException(err)
-			continue
-		}
-
-		if lastResolved.Before(minDate) {
+		if err != nil || lastResolved.Before(minDate) {
 			continue
 		}
 
@@ -472,7 +467,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			downloaded += uint64(wt)
 		}
 
-		return float64(downloaded) / time.Now().Sub(startTime).Seconds()
+		return float64(downloaded) / time.Since(startTime).Seconds()
 	}
 
 	var w sync.WaitGroup
