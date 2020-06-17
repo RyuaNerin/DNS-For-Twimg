@@ -128,8 +128,8 @@
 
 		"worker" : {
 			"resolve" : 32,
-			"ping" : 4,
-			"http" : 2
+			"ping" : 16,
+			"http" : 4
 		},
 		
 		"threatcrowd_expire": "8760h",
