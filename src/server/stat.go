@@ -11,8 +11,7 @@ import (
 )
 
 var (
-	statChartData uint64
-	statJson      uint64
+	statJson uint64
 )
 
 func init() {
@@ -29,15 +28,13 @@ func init() {
 		for {
 			time.Sleep(time.Until(ltime))
 
-			reqHTTP := atomic.SwapUint64(&statChartData, 0)
 			reqJson := atomic.SwapUint64(&statJson, 0)
 
 			fmt.Fprintf(
 				fs,
-				"[%s - %s] http: %6d | json : %6d\n",
+				"[%s - %s] json : %6d\n",
 				ltime.Format("2006-01-02 15:04:05"),
 				time.Now().Format("2006-01-02 15:04:05"),
-				reqHTTP,
 				reqJson,
 			)
 
