@@ -390,9 +390,48 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		h := sha256.New()
 
 		tr := client.Transport.(*http.Transport)
-		tr.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
-			_, port, _ := net.SplitHostPort(addr)
-			return net.Dial(network, net.JoinHostPort(cdnData.addr, port))
+		tr.DialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, _ := net.SplitHostPort(addr)
+
+			var dialer net.Dialer
+			c, err := dialer.DialContext(ctx, network, net.JoinHostPort(cdnData.addr, port))
+			if err != nil {
+				return nil, err
+			}
+
+			tconfig := *tr.TLSClientConfig.Clone()
+			tconfig.ServerName = host
+
+			tc := tls.Client(c, &tconfig)
+
+			errChannel := make(chan error, 1)
+			go func() {
+				errChannel <- tc.Handshake()
+			}()
+			select {
+			case <-ctx.Done():
+				tc.Close()
+				return nil, http.ErrHandlerTimeout
+			case err = <-errChannel:
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			go func() {
+				errChannel <- tc.VerifyHostname(host)
+			}()
+			select {
+			case <-ctx.Done():
+				tc.Close()
+				return nil, http.ErrHandlerTimeout
+			case err = <-errChannel:
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			return tc, nil
 		}
 
 		var downloaded uint64 = 0
