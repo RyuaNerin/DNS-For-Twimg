@@ -399,10 +399,10 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				return nil, err
 			}
 
-			tconfig := *tr.TLSClientConfig.Clone()
+			tconfig := tr.TLSClientConfig.Clone()
 			tconfig.ServerName = host
 
-			tc := tls.Client(c, &tconfig)
+			tc := tls.Client(c, tconfig)
 
 			errChannel := make(chan error, 1)
 			go func() {
