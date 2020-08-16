@@ -12,17 +12,15 @@ import (
 	"github.com/miekg/dns"
 )
 
-var (
-	dnsClient = dns.Client{
+func resolve(dnsAddr []string, host string) (ip net.IP, ok bool) {
+	dnsClient := dns.Client{
 		Net:          "udp",
 		Timeout:      cfg.V.DNS.Client.Timeout.Timeout,
 		ReadTimeout:  cfg.V.DNS.Client.Timeout.ReadTimeout,
 		WriteTimeout: cfg.V.DNS.Client.Timeout.WriteTimeout,
 		DialTimeout:  cfg.V.DNS.Client.Timeout.DialTimeout,
 	}
-)
 
-func resolve(dnsAddr []string, host string) (ip net.IP, ok bool) {
 	if !strings.HasSuffix(host, ".") {
 		host = host + "."
 	}

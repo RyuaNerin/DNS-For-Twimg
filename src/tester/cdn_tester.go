@@ -38,7 +38,7 @@ func newHttpClient() *http.Client {
 	return &http.Client{
 		Timeout: cfg.V.HTTP.Client.Timeout.Timeout,
 		Transport: &http.Transport{
-			ForceAttemptHTTP2: true,
+			//ForceAttemptHTTP2: true,
 
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
@@ -355,6 +355,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	// 상태 나쁜 CDN 제거
+	/**
 	pingAve := time.Duration(td.pingSum / int64(td.pingSumCount))
 
 	for k, data := range td.cdnAddrList {
@@ -363,6 +364,7 @@ func (td *cdnTestHostData) pingAndFilter() {
 			continue
 		}
 	}
+	*/
 }
 
 func (td *cdnTestHostData) httpSpeedTest() {
@@ -432,7 +434,11 @@ func (td *cdnTestHostData) httpSpeedTest() {
 		var downloaded uint64 = 0
 		startTime := time.Now()
 
-		for downloaded < cfg.V.Test.HttpSpeedSize {
+		var testCase int = 0
+
+		for testCase < cfg.V.Test.HttpTestMaxCount && downloaded < cfg.V.Test.HttpTestSize {
+			testCase++
+
 			d := testDataList[rand.Intn(len(testDataList))]
 
 			req, err := http.NewRequest("GET", d.url, nil)
@@ -450,6 +456,11 @@ func (td *cdnTestHostData) httpSpeedTest() {
 				return 0
 			}
 
+			if res.StatusCode != http.StatusOK {
+				log.Println(res.StatusCode, d.url, cdnData.addr)
+				continue
+			}
+
 			h.Reset()
 			wt, err := io.Copy(h, res.Body)
 
@@ -460,6 +471,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 			}
 
 			if !bytes.Equal(h.Sum(nil), d.hash) {
+				log.Println("NEQ", d.url, cdnData.addr)
 				res.Body.Close()
 				return 0
 			}
@@ -471,7 +483,7 @@ func (td *cdnTestHostData) httpSpeedTest() {
 	}
 
 	var w sync.WaitGroup
-	chCdnData := make(chan *cdnTestHostDataResult, cfg.V.Test.Worker.Http)
+	chCdnData := make(chan *cdnTestHostDataResult)
 
 	for i := 0; i < cfg.V.Test.Worker.Http; i++ {
 		w.Add(1)

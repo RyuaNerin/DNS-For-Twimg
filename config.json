@@ -139,6 +139,7 @@
 	
 		"http_timeout": "30s",
     "http_test_size": "200MB",
+    "http_test_max_count": 50,
     
     "host": {
       "pbs.twimg.com": [

@@ -57,8 +57,9 @@ var V struct {
 		PingCount   int           `json:"ping_count"`
 		PingTimeout time.Duration `json:"ping_timeout"`
 
-		HttpTimeout   time.Duration `json:"http_timeout"`
-		HttpSpeedSize uint64        `json:"http_test_size"`
+		HttpTimeout      time.Duration `json:"http_timeout"`
+		HttpTestSize     uint64        `json:"http_test_size"`
+		HttpTestMaxCount int           `json:"http_test_max_count"`
 
 		Host map[string][]string `json:"host"` // 검사할 때 쓸 추가 호스트
 	} `json:"test"`
