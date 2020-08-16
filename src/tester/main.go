@@ -1,19 +1,27 @@
 package tester
 
 import (
+	"sync/atomic"
 	"time"
 
 	"twimgdns/src/common/cfg"
 )
 
+var running int32
+
 func Main() {
-	waitChan := make(chan struct{}, 1)
-	waitChan <- struct{}{}
+	ticker := time.NewTicker(cfg.V.Test.RefreshInterval)
 
 	for {
-		var ct cdnTest
-		ct.do()
+		go func() {
+			if atomic.SwapInt32(&running, 1) != 0 {
+				return
+			}
+			defer atomic.StoreInt32(&running, 0)
+			var ct cdnTest
+			ct.do()
+		}()
 
-		<-time.After(time.Until(time.Now().Truncate(cfg.V.Test.RefreshInterval).Add(cfg.V.Test.RefreshInterval)))
+		<-ticker.C
 	}
 }
